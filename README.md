@@ -98,7 +98,7 @@ harness that is injected at run time; the last run passed 36/36 on both this cop
 
 ## Public copy
 
-`python3 make-public.py` writes `public-build/`: the same prototype with the school name, crest,
+`python3 make-public.py` writes `docs/` (published via GitHub Pages): the same prototype with the school name, crest,
 alumni association, partner companies and every real person replaced by fictional ones. The script
 fails if any identifying term survives. That build is published at
 
