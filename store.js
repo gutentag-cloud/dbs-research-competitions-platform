@@ -7,16 +7,25 @@ window.RCP = window.RCP || {};
   const SESSION = 'rcp-session';
   let db = null;
 
+  // Browsers block localStorage on some origins (e.g. file:// in Safari); fall back to memory.
+  const safe = (() => {
+    try { const t = window.localStorage; t.setItem('rcp-test', '1'); t.removeItem('rcp-test'); return t; }
+    catch (e) {
+      const m = new Map();
+      return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+    }
+  })();
+
   function load() {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = safe.getItem(KEY);
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) return RCP.applyCalendarProposal(RCP.addExamples(parsed));
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
   }
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { console.warn('Could not save', e); }
+    try { safe.setItem(KEY, JSON.stringify(db)); } catch (e) { console.warn('Could not save', e); }
   }
   db = load();
   save();
@@ -41,13 +50,13 @@ window.RCP = window.RCP || {};
 
   // ---------- session ----------
   S.session = function () {
-    try { return JSON.parse(localStorage.getItem(SESSION)) || null; } catch (e) { return null; }
+    try { return JSON.parse(safe.getItem(SESSION)) || null; } catch (e) { return null; }
   };
   S.signIn = function (userId, role) {
-    localStorage.setItem(SESSION, JSON.stringify({ userId, role }));
+    safe.setItem(SESSION, JSON.stringify({ userId, role }));
     S.log(userId, `signed in as ${role}`);
   };
-  S.signOut = function () { localStorage.removeItem(SESSION); };
+  S.signOut = function () { safe.removeItem(SESSION); };
   S.me = function () { const s = S.session(); return s ? S.user(s.userId) : null; };
   S.role = function () { const s = S.session(); return s ? s.role : null; };
 

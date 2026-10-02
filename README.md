@@ -7,7 +7,7 @@ The working prototype of the platform proposed in **CMS Proposal v3** (September
 - Double-click **`index.html`**, or
 - double-click **`Open Platform.command`** (serves it on `http://127.0.0.1:4180` and opens the browser; press Ctrl+C in the Terminal window to stop).
 
-No install and no internet needed (fonts fall back to system fonts offline). Everything is saved in this browser. **Reset demo data** in the footer restores the sample data.
+No install and no internet needed (fonts fall back to system fonts offline). Everything is saved in this browser — opening `index.html` directly works, but data then lasts for the session only; served via `Open Platform.command` it persists between visits. **Reset demo data** in the footer restores the sample data.
 
 ## What the deck promised, and where it is
 
