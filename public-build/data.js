@@ -1,0 +1,397 @@
+/* Seed data for the prototype. Committee members, competitions and dates come from the
+   CMS proposal deck (Sept 2026). Other students, teachers and alumni are sample people. */
+window.RCP = window.RCP || {};
+
+RCP.SEED_VERSION = 6;
+
+RCP.ACCOUNTABILITY = [
+  ['proposal', 'Proposal'],
+  ['endorsement', 'Teacher endorsement'],
+  ['experience', 'Previous experience'],
+  ['decision', 'Committee decision'],
+  ['mentor', 'Mentor assigned'],
+  ['logs', 'Progress logs'],
+  ['final', 'Final submission'],
+  ['result', 'Result'],
+];
+
+RCP.STATUS = {
+  draft: { label: 'Draft', tone: 'muted' },
+  endorsement: { label: 'Awaiting teacher endorsement', tone: 'warn' },
+  returned: { label: 'Returned by teacher', tone: 'bad' },
+  review: { label: 'Committee review', tone: 'info' },
+  rejected: { label: 'Not approved', tone: 'bad' },
+  active: { label: 'Active', tone: 'good' },
+  submitted: { label: 'Final submitted', tone: 'info' },
+  completed: { label: 'Completed', tone: 'good' },
+};
+
+RCP.FILE_CATEGORIES = ['Proposal', 'Progress log', 'Presentation', 'Final submission', 'Experience evidence', 'Other'];
+
+RCP.seed = function seed() {
+  const now = Date.now();
+  const day = 86400000;
+  const iso = (d) => new Date(d).toISOString();
+
+  const users = [
+    // Committee (slide 12)
+    { id: 'ben', name: 'Ben Carter', roles: ['mentor', 'committee'], title: 'Alumni association representative', email: 'ben@alumni.example' },
+    { id: 'omar', name: 'Omar Haddad', roles: ['mentor', 'committee'], title: 'Alumni association representative', email: 'omar@alumni.example' },
+    { id: 'wei', name: 'Wei Lin', roles: ['mentor', 'committee'], title: 'Alumni association representative', email: 'wei@alumni.example' },
+    { id: 'dean', name: 'Dr. Ada Mensah', initials: 'AM', roles: ['committee', 'teacher'], title: 'Dean', email: 'dean@school.example' },
+    { id: 'tic1', name: 'Mr. Alan Reid', initials: 'AR', roles: ['committee', 'teacher'], title: 'ECA Master', email: 'tic1@school.example' },
+    { id: 'tic2', name: 'Mr. Peter Novak', initials: 'PN', roles: ['committee', 'teacher'], title: 'ECA Master', email: 'tic2@school.example' },
+    { id: 'tic3', name: 'Ms. Clara Ortiz', initials: 'CO', roles: ['committee', 'teacher'], title: 'Teacher', email: 'tic3@school.example' },
+    { id: 'leo', name: 'Leo Fischer', form: '11IB', roles: ['student', 'committee'], title: 'Student representative', email: 'leo@students.school.example' },
+    { id: 'noah', name: 'Noah Kim', form: '11IB', roles: ['student', 'committee'], title: 'Student representative', email: 'noah@students.school.example' },
+    // Sample teachers-in-charge
+    { id: 'tic4', name: 'Mr. Ian Brooks', initials: 'IB', roles: ['teacher'], title: 'Physics, TIC', email: 'tic4@school.example', sample: true },
+    { id: 'tic5', name: 'Dr. Maya Rosen', initials: 'MR', roles: ['teacher'], title: 'Biology, TIC', email: 'tic5@school.example', sample: true },
+    // Sample alumni mentors
+    { id: 'mentor4', name: 'Dr. Ravi Menon (2008)', roles: ['mentor'], title: 'Robotics engineer', email: 'mentor4@alumni.example', sample: true },
+    // Sample students
+    { id: 'ethan', name: 'Ethan Lau', form: '10C', roles: ['student'], email: 'ethan@students.school.example', sample: true },
+    { id: 'marcus', name: 'Marcus Cheung', form: '11D', roles: ['student'], email: 'marcus@students.school.example', sample: true },
+    { id: 'ryan', name: 'Ryan Ng', form: '9B', roles: ['student'], email: 'ryan@students.school.example', sample: true },
+    { id: 'aaron', name: 'Aaron Tsang', form: '12IB', roles: ['student'], email: 'aaron@students.school.example', sample: true },
+    { id: 'owen', name: 'Owen Yip', form: '10A', roles: ['student'], email: 'owen@students.school.example', sample: true },
+  ];
+
+  // Slides 6–8. Dates follow the 2025–26 cycle unless a 2027 date is shown. Places are committee-set placeholders.
+  const competitions = [
+    { id: 'isef', short: 'ISEF', name: 'Regeneron International Science and Engineering Fair', tier: 1, hkRound: 'HK ISEF selection · register by mid-Oct, judged Nov', final: 'Los Angeles, USA · 8–14 May 2027', deadline: null, places: 2, bars: [[1, 2, 'HK selection'], [8, 8, 'Final']] },
+    { id: 'geneva', short: 'GI Geneva', name: 'International Exhibition of Inventions Geneva', tier: 1, hkRound: 'HK delegation selection · Nov – Dec', final: 'Geneva, Switzerland · March', deadline: null, places: 2, bars: [[2, 3, 'HK selection'], [6, 6, 'Final']] },
+    { id: 'hksspc', short: 'HKSSPC', name: 'Hong Kong Student Science Project Competition', tier: 1, hkRound: 'School nominations · Dec – Jan', final: 'Final judging · April', deadline: null, places: 4, bars: [[3, 4, 'Nominations'], [7, 7, 'Final']] },
+    { id: 'hkstic', short: 'HKSTIC', name: 'HK Youth Science and Technology Innovation Competition', tier: 1, hkRound: 'Registration closes mid-Jan', final: 'Final exhibition · March – April', deadline: null, places: 4, bars: [[3, 4, 'Registration'], [6, 7, 'Final']] },
+    { id: 'gtc', short: 'GTC-ISPC', name: "G.T. College Int'l Science Project Competition (Bio)", tier: 2, hkRound: 'Registration open now', final: 'G.T. College, Hong Kong · 9 Jan 2027', deadline: null, places: 3, bars: [[0, 1, 'Registration'], [4, 4, 'Final']] },
+    { id: 'sft', short: 'Samsung SFT', name: 'Samsung Solve for Tomorrow', tier: 2, hkRound: 'Register 3 Sep – 16 Oct · proposal due 20 Nov', final: 'Prototype workshops · Jan – Mar 2027', deadline: '2026-10-16', places: 3, bars: [[0, 2, 'Register · proposal'], [4, 6, 'Workshops']] },
+    { id: 'gystb', short: 'GYSTB', name: 'Global Youth Science and Technology Bowl', tier: 2, hkRound: 'Through HKSSPC', final: 'Hong Kong, summer (TBC)', deadline: null, places: 1, via: 'hksspc', bars: [[10, 10, 'TBC']] },
+    { id: 'apcys', short: 'APCYS', name: 'Asia-Pacific Conference of Young Scientists', tier: 2, hkRound: 'Through HKSSPC', final: 'Host varies (TBC)', deadline: null, places: 1, via: 'hksspc', bars: [[10, 10, 'TBC']] },
+    { id: 'other', short: 'Others', name: 'Other competition (suggested by students)', tier: 3, hkRound: 'Case by case', final: '—', deadline: null, places: null, bars: [] },
+  ];
+
+  const checklist = (done) => Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, done.includes(k)]));
+  const sampleFile = (id, name, category, by, days, content) => ({ id, name, category, by, at: iso(now - days * day),
+    type: name.endsWith('.csv') ? 'text/csv' : 'text/plain', size: content.length, sampleContent: content });
+
+  const projects = [
+    {
+      id: 'p-railway', stage: 1, origin: 'student', title: 'Railway clearance monitoring at a city theme park',
+      partner: 'City theme park (via the robotics programme)', competitionId: null,
+      abstract: 'LiDAR-based clearance-envelope checks for the park railway, turning DXF track drawings into a live obstruction detector with a web dashboard for the operations team.',
+      members: ['noah', 'leo'], teacherId: 'tic1', mentorId: 'ben', industryTutor: 'Park railway engineering lead',
+      experience: 'the robotics programme R&D since 2025; LiDAR frontend and DXF clearance-envelope tooling built Feb–Apr 2026.',
+      status: 'active', createdAt: iso(now - 120 * day),
+      endorsement: { by: 'tic1', at: iso(now - 118 * day), note: 'Strong, well-scoped industry project. Endorsed.' },
+      decision: { by: 'dean', at: iso(now - 112 * day), outcome: 'approved', note: 'Approved as the pilot Stage 1 project.' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs']),
+      logs: [
+        { id: 'l1', date: iso(now - 70 * day).slice(0, 10), by: 'noah', at: iso(now - 70 * day), text: 'Clearance envelope generated from all DXF sections. Started field capture plan with the park team.', files: [], comments: [{ by: 'ben', at: iso(now - 68 * day), text: 'Good progress. Agree a safety briefing before any trackside capture.' }] },
+        { id: 'l2', date: iso(now - 38 * day).slice(0, 10), by: 'leo', at: iso(now - 38 * day), text: 'Detector prototype runs on recorded LiDAR at 12 fps. False positives on vegetation; adding a height filter.', files: [], comments: [] },
+        { id: 'l3', date: iso(now - 6 * day).slice(0, 10), by: 'noah', at: iso(now - 6 * day), text: 'September progress update deck shared with the park. Next: live trial window and alert thresholds.', files: ['f-deck'], comments: [] },
+      ],
+      files: [
+        sampleFile('f-deck', 'september-update-deck.txt', 'Presentation', 'noah', 6,
+          'FICTIONAL DEMO PRESENTATION\nRailway clearance monitoring — September update\n1. Clearance envelope from DXF\n2. Detector running at 12 fps on recorded LiDAR\n3. False positives on vegetation and the height filter\n4. Ask: live trial window and alert thresholds'),
+        sampleFile('f-risk', 'trackside-risk-assessment.txt', 'Other', 'tic1', 40,
+          'FICTIONAL DEMO RISK ASSESSMENT\nTrackside data capture\nControls: park safety briefing before each visit, staff escort at all times, no capture during operating hours, equipment secured to the vehicle.'),
+      ],
+    },
+    {
+      id: 'p-domains', stage: 1, origin: 'student', title: 'Detecting suspicious newly registered domains',
+      partner: 'a professional services firm (via the robotics programme)', competitionId: null,
+      abstract: 'Flag look-alike domains registered in the last 30 days that target Hong Kong companies, and send automatic reports to the affected organisations.',
+      members: ['aaron', 'owen'], teacherId: 'tic2', mentorId: 'omar', industryTutor: 'Cyber risk consultant',
+      experience: 'Aaron: HKCERT CTF finalist. Owen: Python data-pipeline coursework.',
+      status: 'active', createdAt: iso(now - 60 * day),
+      endorsement: { by: 'tic2', at: iso(now - 58 * day), note: 'Endorsed.' },
+      decision: { by: 'tic1', at: iso(now - 50 * day), outcome: 'approved', note: 'Approved. Keep monthly logs on the platform.' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs']),
+      logs: [
+        { id: 'l4', date: iso(now - 40 * day).slice(0, 10), by: 'aaron', at: iso(now - 40 * day), text: 'Pulled certificate-transparency feed; 2.1k candidate domains per day after filtering.', files: [], comments: [] },
+      ],
+      files: [],
+    },
+    {
+      id: 'p-levitation', stage: 1, origin: 'teacher', title: 'Acoustic levitation bench for physics demos',
+      partner: null, competitionId: null,
+      abstract: 'Build a low-cost ultrasonic levitator array for the physics lab, so junior classes can float beads, water droplets and styrofoam balls to see standing waves in action.',
+      members: ['owen', 'ryan'], teacherId: 'tic4', mentorId: 'mentor4', industryTutor: null,
+      experience: 'Owen and Ryan finished the the robotics programme electronics curriculum and soldered the society\'s oscilloscope kit.',
+      status: 'active', createdAt: iso(now - 30 * day),
+      endorsement: { by: 'tic4', at: iso(now - 30 * day), note: 'Teacher-initiated project for the physics society.' },
+      decision: { by: 'dean', at: iso(now - 28 * day), outcome: 'approved', note: 'Ratified as a teacher-initiated project.' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs']),
+      logs: [
+        { id: 'l6', date: iso(now - 16 * day).slice(0, 10), by: 'owen', at: iso(now - 16 * day), text: 'Mounted 72 transducers on the circular board; first styrofoam bead levitated for 3 seconds.', files: [], comments: [{ by: 'mentor4', at: iso(now - 15 * day), text: 'Great milestone. Check the phase calibration across the array before the next run.' }] },
+      ],
+      files: [],
+    },
+    {
+      id: 'p-schlieren', stage: 2, origin: 'student', title: 'Seeing airflow with a phone: low-cost schlieren imaging',
+      competitionId: 'isef', partner: null,
+      abstract: 'Background-oriented schlieren on commodity cameras to visualise heat plumes and airflow for school labs, validated against a mirror schlieren rig.',
+      members: ['ethan'], teacherId: 'tic3', mentorId: null,
+      experience: 'HKYPT 2026 team member; built the optics rig for the school physics society.',
+      status: 'endorsement', createdAt: iso(now - 3 * day),
+      endorsement: null, decision: null,
+      checklist: checklist(['proposal', 'experience']), logs: [], files: [],
+    },
+    {
+      id: 'p-rain', stage: 2, origin: 'student', title: 'Rain-aware walking routes for Hong Kong',
+      competitionId: 'sft', partner: null,
+      abstract: 'Route pedestrians under covered walkways when HKO radar shows rain within 20 minutes, using Lands Department footbridge and covered-walkway data.',
+      members: ['marcus', 'ryan'], teacherId: 'tic4', mentorId: null,
+      experience: 'Marcus built a school timetable app; Ryan completed the the robotics programme beginner curriculum.',
+      status: 'review', createdAt: iso(now - 9 * day),
+      endorsement: { by: 'tic4', at: iso(now - 7 * day), note: 'Endorsed. Ryan is young but keen; recommend mentoring.' },
+      decision: null,
+      checklist: checklist(['proposal', 'endorsement', 'experience']), logs: [], files: [],
+    },
+    {
+      id: 'p-algae', stage: 2, origin: 'student', title: 'Microalgae growth under LED spectra',
+      competitionId: 'gtc', partner: null,
+      abstract: 'Compare Chlorella growth rates under narrow-band LEDs to find the most energy-efficient spectrum for school-scale bioreactors.',
+      members: ['owen'], teacherId: 'tic5', mentorId: 'wei',
+      experience: 'Biology Olympiad training squad.',
+      status: 'active', createdAt: iso(now - 85 * day),
+      endorsement: { by: 'tic5', at: iso(now - 83 * day), note: 'Endorsed.' },
+      decision: { by: 'tic3', at: iso(now - 80 * day), outcome: 'approved', note: 'Approved for a GTC-ISPC place.' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs']),
+      logs: [{ id: 'l5', date: iso(now - 72 * day).slice(0, 10), by: 'owen', at: iso(now - 72 * day), text: 'Set up 4 culture flasks; baseline OD readings recorded.', files: [], comments: [] }],
+      files: [],
+    },
+    {
+      id: 'p-draft', stage: 2, origin: 'student', title: 'Magnetic accelerator efficiency (draft)',
+      competitionId: 'hksspc', partner: null, abstract: '', members: ['marcus'], teacherId: null, mentorId: null, experience: '',
+      status: 'draft', createdAt: iso(now - 1 * day), endorsement: null, decision: null,
+      checklist: checklist([]), logs: [], files: [],
+    },
+  ];
+
+  const postings = [
+    {
+      id: 'o-chiller', by: 'ben', title: 'Predictive maintenance for building chillers', org: 'Building services engineering firm (alumni-run)', audience: 'all',
+      description: 'Vibration and temperature data from four chiller units, two of which failed last year. Students look for the signature that comes before a failure and write it up for the maintenance team.',
+      places: 2, hours: '3 h / week', duration: '5 months', requirements: 'Physics or ICT; some Python. Any form level.',
+      status: 'open', createdAt: iso(now - 75 * day), files: [],
+      applications: [
+        { id: 'a3', studentId: 'aaron', at: iso(now - 70 * day), cv: 'HKCERT CTF finalist; data analysis in Python for the school weather station.', coursework: 'Physics HL, Computer Science HL', status: 'placed' },
+        { id: 'a4', studentId: 'owen', at: iso(now - 69 * day), cv: 'Electronics workshop; soldered the society oscilloscope kit.', coursework: 'Physics SL', status: 'declined' },
+      ],
+    },
+    {
+      id: 'o-vision', by: 'wei', title: 'Computer vision for construction-site safety', org: 'Construction technology firm (alumni-run)', audience: 'all',
+      description: 'Detect missing helmets and harnesses from site CCTV and measure how often alerts are acted on. Real footage under an NDA; students work with the site safety manager.',
+      places: 3, hours: '4 h / week', duration: '6 months', requirements: 'Python; any machine-learning coursework is a plus. Form 4 and above.',
+      status: 'open', createdAt: iso(now - 12 * day), files: [],
+      applications: [{ id: 'a1', studentId: 'ryan', at: iso(now - 4 * day), cv: 'the robotics programme beginner curriculum; built a YOLO detector for screws in the railway project dataset.', coursework: 'ICT: 7/7 on image-processing SBA', status: 'pending' },
+        { id: 'a2', studentId: 'leo', at: iso(now - 2 * day), cv: 'the robotics programme R&D member; LiDAR dashboard frontend for the theme park railway project.', coursework: 'ICT: full marks on the database unit', status: 'shortlisted' },
+        { id: 'a5', studentId: 'marcus', at: iso(now - 30 * day), cv: 'School timetable app.', coursework: 'ICT SL', status: 'ineligible' }],
+    },
+    {
+      id: 'o-carbon', by: 'omar', title: 'Carbon accounting dashboard for SMEs', org: 'Sustainability consultancy (alumni-run)', audience: 'G11–G12',
+      description: 'Turn utility bills and delivery logs into Scope 1–2 estimates for small shops. Output: a dashboard pilot with three client businesses.',
+      places: 2, hours: '3 h / week', duration: '4 months', requirements: 'Spreadsheet or web skills; interest in climate. Client-facing work, so senior students only.',
+      status: 'open', createdAt: iso(now - 50 * day), files: [],
+      applications: [{ id: 'a6', studentId: 'aaron', at: iso(now - 46 * day), cv: 'Weather station data pipeline; school sustainability committee.', coursework: 'Economics HL, Computer Science HL', status: 'placed' }],
+    },
+    {
+      id: 'o-line', by: 'mentor4', title: 'Line-following robot race firmware', org: 'Robotics startup (alumni-run)', audience: 'G9–G10',
+      description: 'Tune and extend the firmware of a competition line-follower: PID, sensor fusion and a race-tuning guide. Aims at younger students who want a first hardware win.',
+      places: 4, hours: '3 h / week', duration: '3 months', requirements: 'Basic Arduino or Python; the robotics programme beginner curriculum ideal. Juniors only — seniors have their own postings.',
+      status: 'open', createdAt: iso(now - 8 * day), files: [], applications: [],
+    },
+  ];
+
+  // Alumni-initiated projects: posted by an alumnus, applied for, eligibility confirmed, then run
+  // with check-ins every two months. One for each the alumni association member, so both Stage 1 routes are visible.
+  projects.push(
+    {
+      id: 'p-chiller', postingId: 'o-chiller', stage: 1, origin: 'oldboy', title: 'Predictive maintenance for building chillers',
+      partner: 'Building services engineering firm (alumni-run)', competitionId: null,
+      abstract: 'Vibration and temperature data from four chiller units, two of which failed last year. Find the signature that comes before a failure and write it up for the maintenance team.',
+      members: ['aaron'], teacherId: 'tic3', mentorId: 'ben', industryTutor: 'Maintenance engineering lead',
+      experience: 'HKCERT CTF finalist; data analysis in Python for the school weather station.',
+      status: 'active', createdAt: iso(now - 68 * day), endorsement: null,
+      decision: { by: 'dean', at: iso(now - 68 * day), outcome: 'approved', note: 'Eligibility confirmed (Alumni-initiated project).' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs']),
+      logs: [
+        { id: 'l7', date: iso(now - 62 * day).slice(0, 10), by: 'aaron', at: iso(now - 62 * day), text: 'Site visit and data handover: 14 months of vibration logs for four units, sampled every 10 minutes.', files: [], comments: [{ by: 'ben', at: iso(now - 61 * day), text: 'Check the units were running under comparable load before you compare them.' }] },
+        { id: 'l8', date: iso(now - 8 * day).slice(0, 10), by: 'aaron', at: iso(now - 8 * day), text: 'Spectra for the two failed units show a rising 2x-rotation peak about three weeks before failure. Writing it up with the raw readings attached.', files: ['f-chiller-data'], comments: [] },
+      ],
+      files: [sampleFile('f-chiller-data', 'chiller-vibration-sample.csv', 'Progress log', 'aaron', 8, 'unit,week,peak_2x_mm_s,outcome\nA,1,0.8,ok\nA,12,2.6,failed\nB,1,0.7,ok\nB,12,0.9,ok\n')],
+    },
+    {
+      id: 'p-vision', postingId: 'o-vision', stage: 1, origin: 'oldboy', title: 'Computer vision for construction-site safety',
+      partner: 'Construction technology firm (alumni-run)', competitionId: null,
+      abstract: 'Detect missing helmets and harnesses from site CCTV and measure how often alerts are acted on.',
+      members: ['leo'], teacherId: 'tic1', mentorId: 'wei', industryTutor: 'Site safety manager',
+      experience: 'the robotics programme R&D member; LiDAR dashboard frontend for the theme park railway project.',
+      status: 'active', createdAt: iso(now - 10 * day), endorsement: null,
+      decision: { by: 'dean', at: iso(now - 10 * day), outcome: 'approved', note: 'Eligibility confirmed (Alumni-initiated project).' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor']),
+      logs: [], files: [],
+    },
+    {
+      id: 'p-carbon', postingId: 'o-carbon', stage: 1, origin: 'oldboy', title: 'Carbon accounting dashboard for SMEs',
+      partner: 'Sustainability consultancy (alumni-run)', competitionId: null,
+      abstract: 'Turn utility bills and delivery logs into Scope 1–2 estimates for small shops, with a dashboard piloted at three client businesses.',
+      members: ['aaron'], teacherId: 'tic2', mentorId: 'omar', industryTutor: 'Sustainability consultant',
+      experience: 'Weather station data pipeline; school sustainability committee.',
+      status: 'active', createdAt: iso(now - 44 * day), endorsement: null,
+      decision: { by: 'tic1', at: iso(now - 44 * day), outcome: 'approved', note: 'Eligibility confirmed (Alumni-initiated project).' },
+      checklist: checklist(['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs']),
+      logs: [{ id: 'l9', date: iso(now - 20 * day).slice(0, 10), by: 'aaron', at: iso(now - 20 * day), text: 'Collected a year of bills from the first shop; electricity and gas mapped to emission factors.', files: [], comments: [] }],
+      files: [],
+    },
+  );
+
+  // Applications waiting on each teacher, so every teacher account has something to decide.
+  projects.push(
+    {
+      id: 'p-tide', stage: 2, origin: 'student', title: 'Tidal flow measurement with a drifting GPS float',
+      competitionId: 'hkstic', partner: null,
+      abstract: 'Release GPS floats at three points in the harbour and compare the tracks with the published tidal stream atlas.',
+      members: ['marcus'], teacherId: 'tic1', mentorId: null,
+      experience: 'Built a school timetable app; physics society member.',
+      status: 'endorsement', createdAt: iso(now - 2 * day), endorsement: null, decision: null,
+      checklist: checklist(['proposal', 'experience']), logs: [], files: [],
+    },
+    {
+      id: 'p-queue', stage: 1, origin: 'student', title: 'Measuring canteen queue times with a counter app',
+      competitionId: null, partner: null,
+      abstract: 'Count arrivals and service times at the canteen for two weeks, then test whether a second till would cut the queue.',
+      members: ['owen', 'ryan'], teacherId: 'tic2', mentorId: null,
+      experience: 'Electronics workshop; the robotics programme beginner curriculum.',
+      status: 'endorsement', createdAt: iso(now - 1 * day), endorsement: null, decision: null,
+      checklist: checklist(['proposal', 'experience']), logs: [], files: [],
+    },
+    {
+      id: 'p-lab', stage: 2, origin: 'student', title: 'Reaction rates with a phone light sensor',
+      competitionId: 'hksspc', partner: null,
+      abstract: 'Use a phone light sensor to follow a colour-change reaction and compare the rate constants with a spectrophotometer.',
+      members: ['ethan'], teacherId: 'dean', mentorId: null,
+      experience: 'Chemistry olympiad training squad.',
+      status: 'endorsement', createdAt: iso(now - 1 * day), endorsement: null, decision: null,
+      checklist: checklist(['proposal', 'experience']), logs: [], files: [],
+    },
+  );
+
+  const mail = [
+    { id: 'm1', to: 'tic3', from: 'system', at: iso(now - 3 * day), subject: 'Endorsement requested: Seeing airflow with a phone', body: 'Ethan Lau (10C) has asked you to endorse an ISEF application.', action: { label: 'Review and endorse', href: '#/endorse/p-schlieren' }, read: false },
+    { id: 'm2', to: 'committee', from: 'system', at: iso(now - 7 * day), subject: 'Ready for committee review: Rain-aware walking routes', body: 'Endorsed by Mr. Ian Brooks (IB). Samsung SFT places: 0 of 3 taken.', action: { label: 'Open review', href: '#/review/p-rain' }, read: false },
+    { id: 'm3', to: 'wei', from: 'system', at: iso(now - 4 * day), subject: 'New applicant: Computer vision for construction-site safety', body: 'Ryan Ng (9B) applied to your posted project.', action: { label: 'See applicants', href: '#/postings/o-vision' }, read: false },
+    { id: 'm4', to: 'mentor4', from: 'system', at: iso(now - 16 * day), subject: 'New progress log: Acoustic levitation bench for physics demos', body: 'Owen Yip (10A) posted an update on your mentee project.', action: { label: 'Read log', href: '#/project/p-levitation' }, read: false },
+  ];
+
+  const audit = [
+    { at: iso(now - 120 * day), by: 'noah', text: 'submitted proposal “Railway clearance monitoring at a city theme park”' },
+    { at: iso(now - 118 * day), by: 'tic1', text: 'endorsed “Railway clearance monitoring at a city theme park”' },
+    { at: iso(now - 112 * day), by: 'dean', text: 'approved “Railway clearance monitoring at a city theme park” and assigned mentor Ben Carter' },
+    { at: iso(now - 9 * day), by: 'marcus', text: 'submitted proposal “Rain-aware walking routes for Hong Kong” (Samsung SFT)' },
+    { at: iso(now - 7 * day), by: 'tic4', text: 'endorsed “Rain-aware walking routes for Hong Kong”' },
+    { at: iso(now - 3 * day), by: 'ethan', text: 'submitted proposal “Seeing airflow with a phone” (ISEF)' },
+  ];
+
+  audit.sort((a, b) => b.at.localeCompare(a.at));
+  return RCP.addExamples({ version: RCP.SEED_VERSION, users, competitions, projects, postings, mail, audit });
+};
+
+// Additional examples are merged once without replacing existing browser work.
+RCP.addExamples = function (db) {
+  if (db.examplesRevision === 1) return db;
+  const now = Date.now(), day = 86400000;
+  const at = (days) => new Date(now - days * day).toISOString();
+  const done = (...keys) => Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, keys.includes(k)]));
+  const file = (id, name, category, by, content) => ({ id, name, category, by, at: at(2), type: name.endsWith('.csv') ? 'text/csv' : 'text/plain', size: new Blob([content]).size, sampleContent: content });
+  const rows = [
+    ['draft', 'Classroom air quality sensor', 'ethan', 'tic5', 'hkstic', 'draft', 'Compare CO2 readings in three classrooms before and after opening the windows. Calibrate against a borrowed reference sensor and report the measurement error.'],
+    ['returned', 'Solar charging station for the playground', 'ryan', 'tic4', 'sft', 'returned', 'Measure the energy collected by a small solar panel and test whether it can power a USB charging station during lunchtime.'],
+    ['rejected', 'Automatic recycling bin sorter', 'owen', 'tic2', 'hksspc', 'rejected', 'Classify clean paper, plastic and metal using a camera and test the accuracy on a labelled set of 120 items.'],
+    ['active', 'Water quality logger for the school pond', 'ethan', 'tic5', 'hksspc', 'active', 'Log temperature and turbidity for four weeks, compare against manual readings and document sensor drift.'],
+    ['submitted', 'Low-cost vibration monitor for lab motors', 'marcus', 'tic4', 'hkstic', 'submitted', 'Use an accelerometer to detect a loose motor mounting and compare the results with a securely mounted motor at three speeds.'],
+    ['completed', 'Reusable filter for microplastics', 'aaron', 'tic5', 'hksspc', 'completed', 'Compare three mesh sizes using prepared water samples and calculate the recovery rate over five repeated trials.'],
+    ['full', 'Leaf disease detection on school tablets', 'marcus', 'tic5', 'geneva', 'review', 'Compare a compact image classifier with a larger model on the same 300 leaf images and measure accuracy and tablet inference time.'],
+    ['teacher', 'Mapping heat around the school campus', 'owen', 'tic4', null, 'review', 'Students will measure surface temperature at twelve campus locations and compare shade, paving and vegetation during the lunch break.'],
+  ];
+  const approvedKeys = ['proposal', 'endorsement', 'experience', 'decision', 'mentor', 'logs'];
+  for (const [key, title, member, teacher, competitionId, status, abstract] of rows) {
+    const id = 'demo-' + key;
+    if (db.projects.some(p => p.id === id)) continue;
+    const advanced = ['active', 'submitted', 'completed'].includes(status);
+    const p = { id, example: true, stage: competitionId ? 2 : 1, origin: key === 'teacher' ? 'teacher' : 'student', title, abstract,
+      competitionId, partner: null, members: [member], teacherId: teacher, mentorId: advanced ? 'mentor4' : null,
+      experience: 'Sample team experience: the robotics programme sensor workshop, Python data analysis and a completed classroom measurement exercise.',
+      status, createdAt: at(24), endorsement: status === 'draft' ? null : { by: teacher, at: at(22), note: status === 'returned' ? 'Add a power budget and explain how you will protect the wiring from rain.' : 'The measurement plan is suitable for the team.', ...(status === 'returned' ? {declined: true} : {}) },
+      decision: advanced || status === 'rejected' ? { by: 'dean', at: at(20), outcome: status === 'rejected' ? 'rejected' : 'approved', note: status === 'rejected' ? 'The scope overlaps an existing team. Please discuss a different research question with your teacher.' : 'Approved with monthly updates.' } : null,
+      checklist: advanced ? done(...approvedKeys, ...(status !== 'active' ? ['final'] : []), ...(status === 'completed' ? ['result'] : [])) : done('proposal', 'experience', ...(status !== 'draft' && status !== 'returned' ? ['endorsement'] : []), ...(status === 'rejected' ? ['decision'] : [])),
+      logs: advanced ? [{ id: id + '-log', date: at(3).slice(0,10), at: at(3), by: member, text: 'Repeated the calibration five times. The mean difference was 0.8 units; raw measurements are attached. Next we will test the sensor outdoors.', files: [id + '-measurements'], comments: [{ by: 'mentor4', at: at(2), text: 'Include the spread of the readings as well as the mean, and keep the reference conditions the same.' }] }] : [], files: [] };
+    p.files.push(file(id + '-proposal', 'sample-proposal.txt', 'Proposal', member, 'FICTIONAL DEMO PROPOSAL\n' + title + '\n\n' + abstract + '\n\nMethod: repeat each measurement five times under the same conditions.\nSuccess criterion: report error against a reference measurement.'));
+    if (advanced) p.files.push(file(id + '-measurements', 'sample-measurements.csv', 'Progress log', member, 'trial,reference,sensor\n1,10,10.7\n2,10,10.9\n3,10,10.8\n4,10,10.6\n5,10,11.0\n'));
+    if (['submitted', 'completed'].includes(status)) p.files.push(file(id + '-final', 'sample-final-report.txt', 'Final submission', member, 'FICTIONAL DEMO REPORT\n' + title + '\nFive calibration trials gave a mean sensor reading of 10.8 against a reference of 10.0.\nConclusion: the sensor requires an offset correction of -0.8.'));
+    if (status === 'completed') p.result = 'Sample result: school research showcase, commendation for experimental method.';
+    db.projects.push(p);
+    if (p.decision) db.audit.unshift({ at: p.decision.at, by: 'dean', text: 'recorded a sample committee decision for “' + title + '”', projectId: id });
+    if (status === 'returned') db.mail.push({ id: 'demo-return-mail', to: member, from: 'system', at: at(22), subject: 'Changes requested: ' + title, body: p.endorsement.note, action: { label: 'Revise application', href: '#/apply/' + id }, read: false });
+  }
+  // Two approved Geneva entries fill its two sample places.
+  for (let i = 1; i <= 2; i++) {
+    const id = 'demo-geneva-' + i;
+    if (!db.projects.some(p => p.id === id)) db.projects.push({ ...structuredClone(db.projects.find(p => p.id === 'demo-active')), id, title: ['Portable braille label printer', 'Passive cooling sleeve for water bottles'][i-1], abstract: ['Build a portable label printer with embossed braille dots and compare tactile readability across three dot heights.', 'Compare three sleeve materials under the same ambient conditions and measure how quickly a chilled water bottle warms.'][i-1], experience: 'the robotics programme prototyping workshop and repeated measurement exercises.', competitionId: 'geneva', members: [i === 1 ? 'leo' : 'noah'], files: [], logs: [], checklist: done('proposal', 'endorsement', 'experience', 'decision', 'mentor') });
+  }
+  const schlieren = db.projects.find(p => p.id === 'p-schlieren');
+  if (schlieren && !schlieren.files.length) schlieren.files.push(file('demo-cv', 'sample-student-cv.txt', 'Experience evidence', 'ethan', 'FICTIONAL DEMO CV\nEthan Lau, 10C\nHKYPT team member: assembled the optics rig and analysed camera frames.\nthe robotics programme workshop: Python and sensor calibration.'));
+  const vision = db.postings.find(o => o.id === 'o-vision');
+  if (vision && !(vision.files || []).length) vision.files = [file('demo-brief', 'sample-project-brief.txt', 'Proposal', 'wei', 'FICTIONAL DEMO BRIEF\nConstruction-site safety detector\nUse a synthetic image set to compare false positives and missed detections. Deliver a labelled dataset, a baseline model and a short evaluation report. No real site footage is included.')];
+  db.examplesRevision = 1;
+  db.audit.sort((a,b) => b.at.localeCompare(a.at));
+  return db;
+};
+
+// Calendar milestones checked against the platform proposal, slides 6–8.
+// Dates without a year are placed in the prototype's 2026–27 planning year.
+RCP.CALENDAR_EVENTS = [
+  {id:'sft-open', comp:'sft', label:'Registration opens', date:'2026-09-03', when:'3 September 2026', month:9, kind:'registration', slide:7},
+  {id:'sft-register', comp:'sft', label:'Registration closes', date:'2026-10-16', when:'16 October 2026', month:10, kind:'registration', slide:7},
+  {id:'sft-proposal', comp:'sft', label:'Proposal due', date:'2026-11-20', when:'20 November 2026', month:11, kind:'proposal', slide:7},
+  {id:'sft-workshops', comp:'sft', label:'Prototype workshops', when:'January–March 2027', months:[1,2,3], kind:'workshop', slide:7},
+  {id:'isef-register', comp:'isef', label:'HK selection registration', when:'By mid-October 2026', month:10, kind:'registration', slide:6},
+  {id:'isef-judging', comp:'isef', label:'HK selection judging', when:'November 2026', month:11, kind:'judging', slide:6},
+  {id:'isef-final', comp:'isef', label:'International final', date:'2027-05-08', end:'2027-05-14', when:'8–14 May 2027', month:5, kind:'final', slide:6},
+  {id:'geneva-selection', comp:'geneva', label:'HK delegation selection', when:'November–December 2026', months:[11,12], kind:'selection', slide:6},
+  {id:'geneva-final', comp:'geneva', label:'International exhibition', when:'March 2027', month:3, kind:'final', slide:6},
+  {id:'hksspc-nominations', comp:'hksspc', label:'School nominations', when:'December 2026–January 2027', months:[12,1], kind:'nomination', slide:6},
+  {id:'hksspc-final', comp:'hksspc', label:'Final judging', when:'April 2027', month:4, kind:'judging', slide:6},
+  {id:'hkstic-registration', comp:'hkstic', label:'Registration closes', when:'By mid-January 2027', month:1, kind:'registration', slide:6},
+  {id:'hkstic-final', comp:'hkstic', label:'Final exhibition', when:'March–April 2027', months:[3,4], kind:'final', slide:6},
+  {id:'gtc-registration', comp:'gtc', label:'Registration', when:'Open at the time of the proposal; closing date not given', kind:'registration', slide:7},
+  {id:'gtc-final', comp:'gtc', label:'Competition final', date:'2027-01-09', when:'9 January 2027', month:1, kind:'final', slide:7},
+  {id:'gystb-route', comp:'gystb', label:'Entry through HKSSPC', when:'Summer; date TBC', kind:'referral', slide:7},
+  {id:'apcys-route', comp:'apcys', label:'Entry through HKSSPC', when:'Date and host TBC', kind:'referral', slide:7},
+  {id:'other-route', comp:'other', label:'Committee review', when:'Case by case', kind:'selection', slide:7},
+];
+RCP.CALENDAR_PREP = {
+  registration: ['Prepare the proposal and team details.', 'Obtain teacher endorsement and committee approval.', 'Confirm a school place before registering.'],
+  proposal: ['Finish the proposal and attach the version to be submitted.', 'Ask the teacher and mentor to review it.', 'Submit to the organiser and keep a copy of the confirmation.'],
+  selection: ['Prepare the proposal and evidence of previous experience.', 'Obtain teacher endorsement and a committee decision.', 'Confirm the nomination route and available school places.'],
+  nomination: ['Prepare the proposal and team experience.', 'Obtain teacher endorsement and committee approval.', 'Confirm the school nomination and allocated place.'],
+  judging: ['Update the progress logs and attach supporting evidence.', 'Prepare the report and presentation for teacher and mentor review.', 'Check the organiser’s submission and judging instructions.'],
+  final: ['Prepare the final report and presentation with teacher and mentor feedback.', 'Upload the submitted files and record final submission on the project.', 'Confirm the organiser’s arrangements; record the result afterwards.'],
+  workshop: ['Bring the current prototype and an updated progress log.', 'Agree the next steps with the teacher and alumni mentor.', 'Check workshop attendance and materials with the organiser.'],
+  referral: ['Follow the HKSSPC nomination route first.', 'Ask the committee to confirm selection and the event dates.', 'Prepare the final submission after the invitation is confirmed.'],
+};
+RCP.applyCalendarProposal = function(db) {
+  if (db.calendarRevision === 1) return db;
+  const fields = {
+    isef: {deadline:null, deadlineWindow:'By mid-October 2026'},
+    geneva: {deadline:null, deadlineWindow:'November–December 2026 selection'},
+    hksspc: {deadline:null, deadlineWindow:'December 2026–January 2027 nominations'},
+    hkstic: {deadline:null, deadlineWindow:'By mid-January 2027'},
+    gtc: {deadline:null, deadlineWindow:'Registration open; closing date not given'},
+    sft: {deadline:'2026-10-16', deadlineWindow:'16 October 2026 (planning year)'},
+  };
+  for (const c of db.competitions) if (fields[c.id]) Object.assign(c, fields[c.id]);
+  db.calendarRevision = 1;
+  return db;
+};
