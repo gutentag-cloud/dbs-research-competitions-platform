@@ -312,3 +312,23 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .filebox-panel { position: relative; background: var(--surface); border-radius: var(--r); border: 1px solid var(--line); padding: 18px; width: min(680px, 100%); max-height: min(80vh, 640px); overflow: auto; display: grid; gap: 12px; }
 .filebox-body { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 12px; margin: 0; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; max-height: 46vh; overflow: auto; }
 .poc-note { color: #c4cbdf; font-size: 12.5px; max-width: 320px; border-left: 2px solid var(--gold); padding-left: 10px; }
+
+/* list search + sort */
+.list-tools { display: flex; align-items: end; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+.list-tools input[type="search"] { flex: 1 1 220px; max-width: 380px; }
+.list-tools .field.inline { display: flex; align-items: center; gap: 6px; margin: 0; }
+.count-note { margin-left: auto; padding-bottom: 9px; }
+/* calendar deadline chips (project updates and custom dates) */
+.cal-grid a.cal-due { display: block; width: 100%; text-decoration: none; cursor: pointer; }
+.cal-grid a.cal-due.proj { border-color: var(--navy); color: var(--navy); }
+.cal-grid a.cal-due.custom { border-color: #a84545; color: #a84545; }
+.cal-grid a.cal-due.late { border-style: dashed; color: #a82727; }
+.cal-grid td.due .cal-day { color: var(--navy); }
+/* project deadlines panel */
+.deadlines li { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.deadline-date { font-weight: 700; white-space: nowrap; }
+.deadline-form { margin-top: 10px; }
+.deadline-form .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+button.link { background: none; border: 0; padding: 0; cursor: pointer; }
+/* pdf preview inside the file viewer */
+.filebox-doc { width: 100%; height: min(58vh, 540px); border: 1px solid var(--line); border-radius: 4px; background: #fff; }

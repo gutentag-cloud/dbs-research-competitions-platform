@@ -2,7 +2,31 @@
    CMS proposal deck (Sept 2026). Other students, teachers and Old Boys are sample people. */
 window.RCP = window.RCP || {};
 
-RCP.SEED_VERSION = 6;
+RCP.SEED_VERSION = 7;
+
+/* Minimal single-page PDF writer: sample documents become real PDF files with no library.
+   Output is ASCII-only, so JS string offsets equal PDF byte offsets. */
+RCP.makePdf = function (title, lines) {
+  const fold = (c) => ({ '\u2019': "'", '\u2018': "'", '\u201c': '"', '\u201d': '"', '\u2013': '-', '\u2014': '-', '\u00b7': '-', '\u00d7': 'x', '\u2026': '...' }[c] || '?');
+  const esc = (t) => String(t).replace(/[\\()]/g, (c) => '\\' + c).replace(/[^\x20-\x7e]/g, fold);
+  const wrap = (t, n) => { const out = []; for (const para of String(t).split('\n')) { let line = ''; for (const w of para.split(' ')) { if ((line + ' ' + w).trim().length > n) { out.push('  ' + line.trim()); line = w; } else line += ' ' + w; } out.push('  ' + line.trim()); } return out; };
+  const rows = wrap(lines.join('\n').replace(/\n{2,}/g, '\n \n').replace(/\n/g, '\n '), 88).slice(0, 44);
+  const content = [`BT /F1 15 Tf 64 772 Td (${esc(title)}) Tj ET`].concat(rows.map((l, i) => `BT /F1 10.5 Tf 64 ${744 - i * 13} Td (${esc(l)}) Tj ET`)).join('\n');
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const off = [0];
+  objs.forEach((o, i) => { off.push(pdf.length); pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + off.slice(1).map((o) => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return pdf;
+};
 
 RCP.ACCOUNTABILITY = [
   ['proposal', 'Proposal'],
@@ -38,15 +62,23 @@ RCP.seed = function seed() {
     { id: 'austin', name: 'Austin', roles: ['mentor', 'committee'], title: 'DSOBA representative', email: 'austin@dsoba.example' },
     { id: 'isaac', name: 'Isaac', roles: ['mentor', 'committee'], title: 'DSOBA representative', email: 'isaac@dsoba.example' },
     { id: 'david', name: 'David', roles: ['mentor', 'committee'], title: 'DSOBA representative', email: 'david@dsoba.example' },
-    { id: 'kwc', name: 'Dean Cho', initials: 'KWC', roles: ['committee', 'teacher'], title: 'Dean', email: 'kwc@dbs.example' },
-    { id: 'ltc', name: 'Mr. Chan Long Tin', initials: 'LTC', roles: ['committee', 'teacher'], title: 'ECA Master', email: 'ltc@dbs.example' },
-    { id: 'cal', name: 'Mr. Lee Chi Kong Alfred', initials: 'CAL', roles: ['committee', 'teacher'], title: 'ECA Master', email: 'cal@dbs.example' },
-    { id: 'ksm', name: 'Ms. Chan Sze Man', initials: 'KSM', roles: ['committee', 'teacher'], title: 'Teacher', email: 'ksm@dbs.example' },
+    // Teachers named as on the DBS staff list (dbs.edu.hk, Aug 2025); initials and emails are demo values.
+    { id: 'kwc', name: 'Mr. Cho Ka Wai', initials: 'KCW', roles: ['committee', 'teacher'], title: 'Dean of Culture', email: 'kwc@dbs.example' },
+    { id: 'ltc', name: 'Mr. Chan Long Tin', initials: 'LTC', roles: ['committee', 'teacher'], title: 'Mathematics, ECA Master', email: 'ltc@dbs.example' },
+    { id: 'cal', name: 'Mr. Lee Chi Kong Alfred', initials: 'CAL', roles: ['committee', 'teacher'], title: 'Design & Technology, ECA Master', email: 'cal@dbs.example' },
+    { id: 'ksm', name: 'Ms. Chan Sze Man', initials: 'KSM', roles: ['committee', 'teacher'], title: 'Chinese Language', email: 'ksm@dbs.example' },
     { id: 'trevor', name: 'Trevor Chak', form: '11IB', roles: ['student', 'committee'], title: 'Student representative', email: 'trevor@g.dbs.example' },
     { id: 'jaden', name: 'Jaden Wong', form: '11IB', roles: ['student', 'committee'], title: 'Student representative', email: 'jaden@g.dbs.example' },
-    // Sample teachers-in-charge
-    { id: 'wkh', name: 'Mr. Wong Ka Ho', initials: 'WKH', roles: ['teacher'], title: 'Physics, TIC', email: 'wkh@dbs.example', sample: true },
-    { id: 'lml', name: 'Dr. Lam Mei Ling', initials: 'LML', roles: ['teacher'], title: 'Biology, TIC', email: 'lml@dbs.example', sample: true },
+    // Teachers-in-charge, named as on the DBS staff list; departments are sample assignments
+    { id: 'wkh', name: 'Mr. Wan Chi Yin', initials: 'WCY', roles: ['teacher'], title: 'Physics, TIC', email: 'wkh@dbs.example', sample: true },
+    { id: 'lml', name: 'Ms. Lam Miu Lan', initials: 'LML', roles: ['teacher'], title: 'Biology, TIC', email: 'lml@dbs.example', sample: true },
+    { id: 'auckl', name: 'Mr. Au Ka Lok', initials: 'AKL', roles: ['teacher'], title: 'Physics', email: 'auckl@dbs.example', sample: true },
+    { id: 'kukc', name: 'Mr. Ku Ka Chun', initials: 'KKC', roles: ['teacher'], title: 'Physics', email: 'kukc@dbs.example', sample: true },
+    { id: 'wongkw', name: 'Mr. Wong Kwok Wai', initials: 'WKW', roles: ['teacher'], title: 'Computer Science', email: 'wongkw@dbs.example', sample: true },
+    { id: 'tanghy', name: 'Ms. Tang Hung Yuk', initials: 'THY', roles: ['teacher'], title: 'Chemistry', email: 'tanghy@dbs.example', sample: true },
+    { id: 'chowkc', name: 'Mr. Chow Kevin Chi Tsun', initials: 'CKC', roles: ['teacher'], title: 'Engineering', email: 'chowkc@dbs.example', sample: true },
+    { id: 'ngch', name: 'Mr. Ng Chun Ho', initials: 'NCH', roles: ['teacher'], title: 'Mathematics', email: 'ngch@dbs.example', sample: true },
+    { id: 'pahvk', name: 'Mr. Pahilwani Vijay Kishan', initials: 'PVK', roles: ['teacher'], title: 'Mathematics', email: 'pahvk@dbs.example', sample: true },
     // Sample Old Boy mentors
     { id: 'kho', name: 'Dr. Kelvin Ho (2008)', roles: ['mentor'], title: 'Robotics engineer', email: 'kho@alumni.example', sample: true },
     // Sample students
@@ -72,7 +104,7 @@ RCP.seed = function seed() {
 
   const checklist = (done) => Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, done.includes(k)]));
   const sampleFile = (id, name, category, by, days, content) => ({ id, name, category, by, at: iso(now - days * day),
-    type: name.endsWith('.csv') ? 'text/csv' : 'text/plain', size: content.length, sampleContent: content });
+    type: name.endsWith('.csv') ? 'text/csv' : 'application/pdf', size: content.length, sampleContent: content });
 
   const projects = [
     {
@@ -91,10 +123,10 @@ RCP.seed = function seed() {
         { id: 'l3', date: iso(now - 6 * day).slice(0, 10), by: 'jaden', at: iso(now - 6 * day), text: 'September progress update deck shared with the park. Next: live trial window and alert thresholds.', files: ['f-deck'], comments: [] },
       ],
       files: [
-        sampleFile('f-deck', 'september-update-deck.txt', 'Presentation', 'jaden', 6,
-          'FICTIONAL DEMO PRESENTATION\nRailway clearance monitoring — September update\n1. Clearance envelope from DXF\n2. Detector running at 12 fps on recorded LiDAR\n3. False positives on vegetation and the height filter\n4. Ask: live trial window and alert thresholds'),
-        sampleFile('f-risk', 'trackside-risk-assessment.txt', 'Other', 'ltc', 40,
-          'FICTIONAL DEMO RISK ASSESSMENT\nTrackside data capture\nControls: park safety briefing before each visit, staff escort at all times, no capture during operating hours, equipment secured to the vehicle.'),
+        sampleFile('f-deck', 'september-update-deck.pdf', 'Presentation', 'jaden', 6,
+          RCP.makePdf('Railway clearance monitoring — September update', ['FICTIONAL DEMO PRESENTATION', '', '1. Clearance envelope generated from DXF drawings', '2. Detector running at 12 fps on recorded LiDAR', '3. False positives on vegetation and the height filter', '4. Ask: live trial window and alert thresholds'])),
+        sampleFile('f-risk', 'trackside-risk-assessment.pdf', 'Other', 'ltc', 40,
+          RCP.makePdf('Trackside risk assessment', ['FICTIONAL DEMO DOCUMENT', '', 'Controls: park safety briefing before each visit, staff escort at all times, no capture during operating hours, equipment secured to the vehicle.'])),
       ],
     },
     {
@@ -280,7 +312,7 @@ RCP.seed = function seed() {
 
   const mail = [
     { id: 'm1', to: 'ksm', from: 'system', at: iso(now - 3 * day), subject: 'Endorsement requested: Seeing airflow with a phone', body: 'Ethan Lau (10C) has asked you to endorse an ISEF application.', action: { label: 'Review and endorse', href: '#/endorse/p-schlieren' }, read: false },
-    { id: 'm2', to: 'committee', from: 'system', at: iso(now - 7 * day), subject: 'Ready for committee review: Rain-aware walking routes', body: 'Endorsed by Mr. Wong Ka Ho (WKH). Samsung SFT places: 0 of 3 taken.', action: { label: 'Open review', href: '#/review/p-rain' }, read: false },
+    { id: 'm2', to: 'committee', from: 'system', at: iso(now - 7 * day), subject: 'Ready for committee review: Rain-aware walking routes', body: 'Endorsed by Mr. Wan Chi Yin (WCY). Samsung SFT places: 0 of 3 taken.', action: { label: 'Open review', href: '#/review/p-rain' }, read: false },
     { id: 'm3', to: 'david', from: 'system', at: iso(now - 4 * day), subject: 'New applicant: Computer vision for construction-site safety', body: 'Ryan Ng (9B) applied to your posted project.', action: { label: 'See applicants', href: '#/postings/o-vision' }, read: false },
     { id: 'm4', to: 'kho', from: 'system', at: iso(now - 16 * day), subject: 'New progress log: Acoustic levitation bench for physics demos', body: 'Owen Yip (10A) posted an update on your mentee project.', action: { label: 'Read log', href: '#/project/p-levitation' }, read: false },
   ];
@@ -295,7 +327,7 @@ RCP.seed = function seed() {
   ];
 
   audit.sort((a, b) => b.at.localeCompare(a.at));
-  return RCP.addExamples({ version: RCP.SEED_VERSION, users, competitions, projects, postings, mail, audit });
+  return RCP.addExamples({ version: RCP.SEED_VERSION, users, competitions, projects, postings, mail, audit, customDates: [] });
 };
 
 // Additional examples are merged once without replacing existing browser work.
@@ -304,7 +336,7 @@ RCP.addExamples = function (db) {
   const now = Date.now(), day = 86400000;
   const at = (days) => new Date(now - days * day).toISOString();
   const done = (...keys) => Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, keys.includes(k)]));
-  const file = (id, name, category, by, content) => ({ id, name, category, by, at: at(2), type: name.endsWith('.csv') ? 'text/csv' : 'text/plain', size: new Blob([content]).size, sampleContent: content });
+  const file = (id, name, category, by, content) => ({ id, name, category, by, at: at(2), type: name.endsWith('.csv') ? 'text/csv' : 'application/pdf', size: content.length, sampleContent: content });
   const rows = [
     ['draft', 'Classroom air quality sensor', 'ethan', 'lml', 'hkstic', 'draft', 'Compare CO2 readings in three classrooms before and after opening the windows. Calibrate against a borrowed reference sensor and report the measurement error.'],
     ['returned', 'Solar charging station for the playground', 'ryan', 'wkh', 'sft', 'returned', 'Measure the energy collected by a small solar panel and test whether it can power a USB charging station during lunchtime.'],
@@ -327,9 +359,9 @@ RCP.addExamples = function (db) {
       decision: advanced || status === 'rejected' ? { by: 'kwc', at: at(20), outcome: status === 'rejected' ? 'rejected' : 'approved', note: status === 'rejected' ? 'The scope overlaps an existing team. Please discuss a different research question with your teacher.' : 'Approved with monthly updates.' } : null,
       checklist: advanced ? done(...approvedKeys, ...(status !== 'active' ? ['final'] : []), ...(status === 'completed' ? ['result'] : [])) : done('proposal', 'experience', ...(status !== 'draft' && status !== 'returned' ? ['endorsement'] : []), ...(status === 'rejected' ? ['decision'] : [])),
       logs: advanced ? [{ id: id + '-log', date: at(3).slice(0,10), at: at(3), by: member, text: 'Repeated the calibration five times. The mean difference was 0.8 units; raw measurements are attached. Next we will test the sensor outdoors.', files: [id + '-measurements'], comments: [{ by: 'kho', at: at(2), text: 'Include the spread of the readings as well as the mean, and keep the reference conditions the same.' }] }] : [], files: [] };
-    p.files.push(file(id + '-proposal', 'sample-proposal.txt', 'Proposal', member, 'FICTIONAL DEMO PROPOSAL\n' + title + '\n\n' + abstract + '\n\nMethod: repeat each measurement five times under the same conditions.\nSuccess criterion: report error against a reference measurement.'));
+    p.files.push(file(id + '-proposal', 'sample-proposal.pdf', 'Proposal', member, RCP.makePdf('Sample proposal: ' + title, ['', 'Every person, project and file in this prototype is fictional.', '', 'Abstract', abstract, '', 'Method', 'Repeat each measurement five times under the same conditions.', '', 'Success criterion', 'Report error against a reference measurement.'])));
     if (advanced) p.files.push(file(id + '-measurements', 'sample-measurements.csv', 'Progress log', member, 'trial,reference,sensor\n1,10,10.7\n2,10,10.9\n3,10,10.8\n4,10,10.6\n5,10,11.0\n'));
-    if (['submitted', 'completed'].includes(status)) p.files.push(file(id + '-final', 'sample-final-report.txt', 'Final submission', member, 'FICTIONAL DEMO REPORT\n' + title + '\nFive calibration trials gave a mean sensor reading of 10.8 against a reference of 10.0.\nConclusion: the sensor requires an offset correction of -0.8.'));
+    if (['submitted', 'completed'].includes(status)) p.files.push(file(id + '-final', 'sample-final-report.pdf', 'Final submission', member, RCP.makePdf('Sample final report: ' + title, ['', 'Every person, project and file in this prototype is fictional.', '', 'Results', 'Five calibration trials gave a mean sensor reading of 10.8 against a reference of 10.0.', '', 'Conclusion', 'The sensor requires an offset correction of -0.8.'])));
     if (status === 'completed') p.result = 'Sample result: school research showcase, commendation for experimental method.';
     db.projects.push(p);
     if (p.decision) db.audit.unshift({ at: p.decision.at, by: 'kwc', text: 'recorded a sample committee decision for “' + title + '”', projectId: id });
@@ -341,9 +373,11 @@ RCP.addExamples = function (db) {
     if (!db.projects.some(p => p.id === id)) db.projects.push({ ...structuredClone(db.projects.find(p => p.id === 'demo-active')), id, title: ['Portable braille label printer', 'Passive cooling sleeve for water bottles'][i-1], abstract: ['Build a portable label printer with embossed braille dots and compare tactile readability across three dot heights.', 'Compare three sleeve materials under the same ambient conditions and measure how quickly a chilled water bottle warms.'][i-1], experience: 'PRISM prototyping workshop and repeated measurement exercises.', competitionId: 'geneva', members: [i === 1 ? 'trevor' : 'jaden'], files: [], logs: [], checklist: done('proposal', 'endorsement', 'experience', 'decision', 'mentor') });
   }
   const schlieren = db.projects.find(p => p.id === 'p-schlieren');
-  if (schlieren && !schlieren.files.length) schlieren.files.push(file('demo-cv', 'sample-student-cv.txt', 'Experience evidence', 'ethan', 'FICTIONAL DEMO CV\nEthan Lau, 10C\nHKYPT team member: assembled the optics rig and analysed camera frames.\nPRISM workshop: Python and sensor calibration.'));
+  if (schlieren && !schlieren.files.length) schlieren.files.push(file('demo-cv', 'sample-student-cv.pdf', 'Experience evidence', 'ethan', RCP.makePdf('Sample student CV: Ethan Lau', ['', 'Every person in this prototype is fictional.', '', 'Ethan Lau, 10C', 'HKYPT team member: assembled the optics rig and analysed camera frames.', 'PRISM workshop: Python and sensor calibration.'])));
   const vision = db.postings.find(o => o.id === 'o-vision');
-  if (vision && !(vision.files || []).length) vision.files = [file('demo-brief', 'sample-project-brief.txt', 'Proposal', 'david', 'FICTIONAL DEMO BRIEF\nConstruction-site safety detector\nUse a synthetic image set to compare false positives and missed detections. Deliver a labelled dataset, a baseline model and a short evaluation report. No real site footage is included.')];
+  if (vision && !(vision.files || []).length) vision.files = [file('demo-brief', 'sample-project-brief.pdf', 'Proposal', 'david', RCP.makePdf('Project brief: construction-site safety detector', ['', 'Every person, project and file in this prototype is fictional.', '', 'Task', 'Use a synthetic image set to compare false positives and missed detections.', '', 'Deliverables', 'A labelled dataset, a baseline model and a short evaluation report. No real site footage is included.']))];
+  db.customDates ||= [];
+  if (!db.customDates.length) db.customDates.push({ id: 'demo-deadline-1', projectId: 'demo-active', title: 'Mentor call: review drift data', date: new Date(now + 12 * day).toISOString().slice(0, 10), by: 'kho', createdAt: at(10) });
   db.examplesRevision = 1;
   db.audit.sort((a,b) => b.at.localeCompare(a.at));
   return db;

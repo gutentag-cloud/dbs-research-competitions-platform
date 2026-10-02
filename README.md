@@ -22,7 +22,7 @@ No install and no internet needed (fonts fall back to system fonts offline). Eve
 | **Prototype: a student's project page** (slide 11) | `#/project/…`: proposal, people, decisions, log timeline with mentor feedback, files, final submission, result |
 | **Stage 1, student-initiated**: proposal → committee review → matching TICs and Old Boys → regular updates (slide 9) | Wizard → endorsement → *Review queue* (assign mentor on approval) → monthly logs with overdue flags |
 | **Stage 1, Old Boy-initiated**: project posted → students apply with CV and coursework → committee eligibility check → check-ins every 2 months (slide 9) | Mentors *Post a project*; students apply; the mentor shortlists; the committee confirms eligibility and names a TIC on *Eligibility*, which creates the project with a 2-month check-in cadence |
-| **Teacher-initiated projects** | Teachers-in-charge can *Propose a project* (nav) — it skips endorsement and goes straight to the committee to ratify, then runs like any other project. Example seeded: *Acoustic levitation bench* (WKH) |
+| **Teacher-initiated projects** | Teachers-in-charge can *Propose a project* (nav) — it skips endorsement and goes straight to the committee to ratify, then runs like any other project. Example seeded: *Acoustic levitation bench* (WCY) |
 | **Targeted recruitment** | Postings carry a target audience (All students / G9–G10 / G11–G12): students only see postings aimed at their year level, and restricted ones are labelled |
 | **Stage 2**: apply → review → DSOBA match → monitor → grow (slide 10) | Competition applications share the same pipeline; the committee assigns an Old Boy mentor and monitors logs |
 | **Monitor / Document** aims (slide 4) | *Register* (every entry, exportable as CSV), *Audit log* (every action), committee *Dashboard* (awaiting decisions, overdue logs, closing deadlines) |
@@ -44,15 +44,22 @@ The prototype was checked in an isolated Chromium browser on desktop and at 390p
 
 1. Sign in as **Ethan Lau** (student) → *New application* → ISEF → fill the steps (attach a CV on *Experience*) → choose **Ms. Chan Sze Man** → Submit.
 2. Sign out → **Ms. Chan Sze Man** (teacher) → her dashboard shows Ethan's application inline; open the attached CV, then *Endorse*.
-3. Sign out → **Dean Cho** (committee) → *Review queue* → open it → assign mentor **Austin** → Approve. The ISEF quota bar on the dashboard moves.
+3. Sign out → **Mr. Cho Ka Wai** (committee) → *Review queue* → open it → assign mentor **Austin** → Approve. The ISEF quota bar on the dashboard moves.
 4. Sign out → **Ethan Lau** → open the project → post a progress log with a file (monthly documentation is the Stage 2 demo policy; the next-log countdown restarts) → *Mark final submission done* → record a result. All 8 accountability steps turn gold.
 5. Try **David** (mentor) → *My posted projects* → shortlist Ryan → **Isaac** (committee) → *Eligibility* → confirm.
 6. Compare **Ryan Ng** (9B) and **Aaron Tsang** (12IB) under *Old Boy projects*: Aaron sees the senior-only carbon dashboard posting, Ryan sees the junior robotics one. Postings can also carry attached briefs.
-7. Try **Mr. Wong Ka Ho** (teacher) → his dashboard has the teacher-initiated *Acoustic levitation bench* (log overdue) and *Propose a project* to start a new one.
+7. Try **Mr. Wan Chi Yin** (teacher) → his dashboard has the teacher-initiated *Acoustic levitation bench* (log overdue) and *Propose a project* to start a new one.
 
 ## Data
 
-Committee members, competitions and their dates come from the deck; per the deck, dates follow the 2025–26 cycle unless a 2027 date is shown. Competition **place numbers are placeholders** for the committee to set. Students marked *sample*, the sample TICs (WKH, LML) and Dr. Kelvin Ho are fictional. The Disneyland and PwC projects mirror PRISM's current work so the pilot looks realistic. The seed data intentionally includes a **student-initiated** (schlieren, rain-aware routes), a **teacher-initiated** (acoustic levitation) and **Old Boy-initiated** (vision, carbon, robotics) example, plus a shortlisted applicant, so every page has something to show.
+Committee members, competitions and their dates come from the deck; per the deck, dates follow the 2025–26 cycle unless a 2027 date is shown. Competition **place numbers are placeholders** for the committee to set. Teachers-in-charge are named as on the DBS staff list (dbs.edu.hk), with sample departments; their students, the Old Boy mentors and all proposals are fictional. The Disneyland and PwC projects mirror PRISM's current work so the pilot looks realistic. The seed data intentionally includes a **student-initiated** (schlieren, rain-aware routes), a **teacher-initiated** (acoustic levitation) and an **Old Boy-initiated** (vision, carbon, robotics) example, plus a shortlisted applicant, so every page has something to show.
+
+## October 2026 update
+
+- **Sample documents are PDFs.** Proposals, final reports, CVs and briefs are generated as real PDF files in the browser (no library); CSV data stays CSV. PDFs open in the built-in viewer and download properly.
+- **Quota tracker has a search bar**, and the **Register has search plus sort** (project, track, status, teacher, mentor, log count). Both filter and sort the table instantly without a page reload.
+- **Calendar opens on the month view**, and every visible project marks its **next update due date** on the grid, alongside competition milestones.
+- **Custom deadlines**: the mentor or teacher-in-charge of a project can add and remove deadlines for their own project (title + date) from the project page. They appear on the calendar, notify the team in Mail, and write to the audit log.
 
 ## From prototype to production
 

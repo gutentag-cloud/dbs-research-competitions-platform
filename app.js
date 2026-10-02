@@ -34,7 +34,7 @@
   const audienceOk = (o, u) => !o.audience || o.audience === 'all' || (o.audience === 'G9–G10' ? gradeOf(u) <= 10 : gradeOf(u) >= 11);
 
   let loginRole = 'student';
-  let calendarMode = 'agenda';
+  let calendarMode = 'months';
   let calendarCompetition = 'all';
   let flash = null;
   const notify = (msg, tone) => { flash = { msg, tone: tone || 'good' }; };
@@ -418,6 +418,20 @@
           </div>
 
           <div class="panel">
+            <h3>Deadlines</h3>
+            ${(() => { const ds = S.deadlinesFor(p.id); return ds.length ? html`<ul class="plain small deadlines">${ds.map((d) => html`<li>
+              <span class="deadline-date ${d.date < today ? 'tone-bad-text' : ''}">${date(d.date)}</span> <b>${d.title}</b> <span class="muted">· ${S.displayName(d.by)}</span>
+              ${d.by === me.id ? html`<button class="link tone-bad-text" data-act="del-deadline" data-id="${d.id}">Remove</button>` : ''}</li>`)}</ul>` : html`<p class="muted small">No dates set for this project yet.</p>`; })()}
+            ${isMentor || p.teacherId === me.id ? html`
+              <form class="deadline-form" data-form="add-deadline" data-project="${p.id}">
+                <div class="row"><label class="field grow"><span>Deadline</span><input name="title" required maxlength="80" placeholder="e.g. Draft report to mentor"></label>
+                <label class="field"><span>Date</span><input type="date" name="date" required></label></div>
+                <button class="btn small">Add deadline</button>
+              </form>
+              <p class="muted small">Added to the team's Mail and marked on the shared calendar. Only the mentor and teacher-in-charge can set dates here.</p>` : html`<p class="muted small">Dates are set by the mentor or the teacher-in-charge.</p>`}
+          </div>
+
+          <div class="panel">
             <h3>Decisions</h3>
             <ul class="plain small">
               <li><b>Endorsement:</b> ${p.endorsement ? html`${p.endorsement.declined ? 'Returned' : 'Endorsed'} by ${S.displayName(p.endorsement.by)}, ${date(p.endorsement.at)}${p.endorsement.note ? html`<br><span class="muted">“${p.endorsement.note}”</span>` : ''}` : html`<span class="muted">Pending</span>`}</li>
@@ -501,11 +515,12 @@
   function viewQuota(role) {
     return html`
       <div class="page-head"><div><h1>Quota tracker</h1><p class="muted">Set school places before registration or nomination. Date windows follow the proposal; exact current-year closing dates still need confirmation.</p></div></div>
-      <div class="panel table-wrap"><table class="table quota-table"><thead><tr><th>Competition</th><th>Hong Kong round</th><th>Deadline</th><th>Places</th><th>Entries</th>${role === 'committee' ? html`<th>Set places</th>` : ''}</tr></thead><tbody>
+      ${listTools('quota-table', [['short', 'Competition'], ['deadline', 'Deadline'], ['places', 'Places']], 'Search competitions…')}
+      <div class="panel table-wrap"><table class="table quota-table" id="quota-table"><thead><tr><th>Competition</th><th>Hong Kong round</th><th>Deadline</th><th>Places</th><th>Entries</th>${role === 'committee' ? html`<th>Set places</th>` : ''}</tr></thead><tbody>
       ${S.db.competitions.map((c) => {
         const d = daysUntil(c.deadline);
         const entries = S.db.projects.filter((p) => p.competitionId === c.id && p.status !== 'draft');
-        return html`<tr>
+        return html`<tr data-short="${c.short.toLowerCase()} ${c.name.toLowerCase()}" data-deadline="${c.deadline || '9999-99-99'}" data-places="${c.places == null ? 999 : c.places}">
           <td><b>${c.short}</b><br><span class="muted small">${c.name}</span></td>
           <td class="small">${c.hkRound}${c.via ? html`<br><span class="muted">via ${S.comp(c.via).short}</span>` : ''}</td>
           <td class="small ${d !== null && d < 21 && d >= 0 ? 'tone-bad-text' : ''}">${c.deadline ? html`${date(c.deadline)}<br>${d < 0 ? 'passed' : `${d} days`}` : c.deadlineWindow || 'TBC'}</td>
@@ -521,8 +536,12 @@
     const P = S.db.projects.filter((p) => p.status !== 'draft');
     return html`
       <div class="page-head"><div><h1>Register</h1><p class="muted">School entries and their current status.</p></div><button class="btn ghost" data-act="csv">Export CSV</button></div>
-      <div class="panel table-wrap"><table class="table"><thead><tr><th>Project</th><th>Track</th><th>Team</th><th>Teacher</th><th>Mentor</th><th>Status</th><th>Logs</th></tr></thead><tbody>
-      ${P.map((p) => { const due = S.logDue(p); return html`<tr>
+      ${listTools('register-table', [['title', 'Project'], ['track', 'Track'], ['status', 'Status'], ['teacher', 'Teacher'], ['mentor', 'Mentor'], ['logs', 'Logs']], 'Search projects, teams, teachers…')}
+      <div class="panel table-wrap"><table class="table" id="register-table"><thead><tr><th>Project</th><th>Track</th><th>Team</th><th>Teacher</th><th>Mentor</th><th>Status</th><th>Logs</th></tr></thead><tbody>
+      ${P.map((p) => { const due = S.logDue(p); return html`<tr
+        data-title="${p.title.toLowerCase()}" data-track="${trackLabel(p).toLowerCase()}"
+        data-status="${RCP.STATUS[p.status].label.toLowerCase()}" data-teacher="${p.teacherId ? S.displayName(p.teacherId).toLowerCase() : ''}"
+        data-mentor="${p.mentorId ? S.displayName(p.mentorId).toLowerCase() : ''}" data-logs="${p.logs.length}">
         <td><a href="#/project/${p.id}">${p.title}</a></td><td class="small">${trackLabel(p)}</td>
         <td class="small">${p.members.map(S.displayName).join(', ')}</td>
         <td class="small">${p.teacherId ? S.displayName(p.teacherId) : '—'}</td>
@@ -676,24 +695,32 @@
     const logProjects = visible.filter(p => S.logDue(p) && (calendarCompetition === 'all' || p.competitionId === calendarCompetition)).sort((a,b) => S.logDue(a).due - S.logDue(b).due);
     const sortDate = e => e.date || (e.month || e.months?.[0] ? `${(e.month || e.months[0]) >= 9 ? 2026 : 2027}-${String(e.month || e.months[0]).padStart(2,'0')}-01` : '9999');
     const ordered = [...events].sort((a,b) => sortDate(a).localeCompare(sortDate(b)));
-    const due = {};
+    const marks = {}; // iso date -> [{kind:'event'|'log'|'custom', …}]
+    const addMark = (iso, m) => { (marks[iso] ||= []).push(m); };
     for (const e of events) if(e.date) {
       for(let d = e.date; d <= (e.end || e.date);) {
-        (due[d] ||= []).push(e);
+        addMark(d, { kind: 'event', e });
         const next = new Date(d + 'T12:00:00Z'); next.setUTCDate(next.getUTCDate()+1); d = next.toISOString().slice(0,10);
       }
     }
+    const inScope = (p) => calendarCompetition === 'all' || p.competitionId === calendarCompetition;
+    for (const p of logProjects) { const n = S.logDue(p); addMark(new Date(n.due).toISOString().slice(0,10), { kind: 'log', p, overdue: n.overdue }); }
+    for (const d of S.allDeadlines()) { const p = S.project(d.projectId); if (p && canSee(p, me, role) && inScope(p)) addMark(d.date, { kind: 'custom', d, p }); }
+    const chip = (t) => t.length > 14 ? t.slice(0, 13) + '…' : t;
     const today = todayIso();
     const months = Array.from({length:12}, (_,i) => new Date(2026,8+i,1));
     return html`
       <div class="page-head"><div><h1>Calendar 2026–27</h1><p class="muted">What is due, what to prepare and when your next project update is needed.</p></div></div>
       <div class="calendar-source small"><b>Checked against CMS Proposal v3, slides 6–9.</b> Dates without a year are placed in this planning year. Month windows remain approximate; exact current-year organiser dates need confirmation. Preparation below is a suggested platform checklist based on slides 11 and 13, rather than a list of organiser requirements.</div>
       <div class="calendar-tools">
-        <div class="role-tabs" aria-label="Calendar view"><button data-act="calendar-mode" data-mode="agenda" class="${calendarMode === 'agenda' ? 'on' : ''}" aria-pressed="${calendarMode === 'agenda'}">Deadlines &amp; preparation</button><button data-act="calendar-mode" data-mode="months" class="${calendarMode === 'months' ? 'on' : ''}" aria-pressed="${calendarMode === 'months'}">Month view</button></div>
+        <div class="role-tabs" aria-label="Calendar view"><button data-act="calendar-mode" data-mode="months" class="${calendarMode === 'months' ? 'on' : ''}" aria-pressed="${calendarMode === 'months'}">Month view</button><button data-act="calendar-mode" data-mode="agenda" class="${calendarMode === 'agenda' ? 'on' : ''}" aria-pressed="${calendarMode === 'agenda'}">Deadlines &amp; preparation</button></div>
         <label class="field"><span>Competition</span><select data-act="calendar-filter"> <option value="all">All competitions and industry projects</option>${S.db.competitions.map(c => html`<option value="${c.id}" ${calendarCompetition === c.id ? raw('selected') : ''}>${c.short}</option>`)}</select></label>
       </div>
       <section class="panel calendar-logs"><h2>Project updates due</h2><p class="small muted">${role === 'committee' ? 'All active projects.' : 'Projects available to your account.'} Upload a progress log and supporting files on the project page.</p>
         ${logProjects.length ? html`<ul class="plain">${logProjects.map(p => {const next = S.logDue(p);return html`<li><div><a href="#/project/${p.id}">${p.title}</a><span class="small muted">${S.cadenceLabel(p)}</span></div><span class="small ${next.overdue ? 'tone-bad-text' : ''}">${date(new Date(next.due).toISOString())}${next.overdue ? ' · overdue' : ''}</span></li>`;})}</ul>` : html`<p class="small muted">No active project updates due for this selection.</p>`}
+      </section>
+      <section class="panel calendar-deadlines"><h2>Project deadlines</h2><p class="small muted">Next update due for each active project, plus deadlines set by mentors and teachers-in-charge. Click one to open the project.</p>
+        ${(logProjects.length || Object.values(marks).some(list => list.some(m => m.kind === 'custom'))) ? html`<ul class="plain">${[...logProjects.map((p) => ({ p, at: S.logDue(p).due, overdue: S.logDue(p).overdue, title: S.cadenceLabel(p) })), ...S.allDeadlines().map((d) => ({ p: S.project(d.projectId), at: Date.parse(d.date + 'T23:59:00+08:00'), overdue: d.date < today, title: d.title + ' · set by ' + S.displayName(d.by) }))].filter((x) => x.p && canSee(x.p, me, role) && inScope(x.p)).sort((a, b) => a.at - b.at).map((x) => html`<li><div><a href="#/project/${x.p.id}">${x.title === S.cadenceLabel(x.p) ? x.p.title : x.title}</a><span class="small muted">${x.kind || x.title === S.cadenceLabel(x.p) ? x.p.title : ''}</span></div><span class="small ${x.overdue ? 'tone-bad-text' : ''}">${date(new Date(x.at).toISOString())}${x.overdue ? ' · overdue' : ''}</span></li>`)}</ul>` : html`<p class="small muted">No project deadlines for this selection.</p>`}
       </section>
       ${calendarMode === 'months' ? html`
         <div class="legend small"><span><i class="cal-key"></i> Dated milestone — select it for preparation</span><span><i class="cal-key today"></i> Today</span></div>
@@ -704,8 +731,8 @@
           const windows=events.filter(e=>!e.date && (e.month===mo+1 || e.months?.includes(mo+1)));
           return html`<div class="cal-month-card"><h4>${m.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</h4><table class="cal-grid"><thead><tr>${['M','T','W','T','F','S','S'].map(d=>html`<th>${d}</th>`)}</tr></thead><tbody>${chunk(cells,7).map(week=>html`<tr>${week.map(d=>{
             if(!d)return html`<td class="pad"></td>`;
-            const iso=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const list=due[iso];
-            return html`<td class="${list?'due':''}${iso===today?' today':''}"><span class="cal-day">${d}</span>${list?list.map(e=>html`<button class="cal-due" data-act="calendar-open" data-event="${e.id}" aria-label="${S.comp(e.comp).short}: ${e.label}, ${e.when}">${S.comp(e.comp).short}</button>`):''}</td>`;
+            const iso=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const list=marks[iso]||[];
+            return html`<td class="${list.length?'due':''}${iso===today?' today':''}"><span class="cal-day">${d}</span>${list.map((m)=>m.kind==='event'?html`<button class="cal-due" data-act="calendar-open" data-event="${m.e.id}" aria-label="${S.comp(m.e.comp).short}: ${m.e.label}, ${m.e.when}">${S.comp(m.e.comp).short}</button>`:m.kind==='log'?html`<a class="cal-due proj${m.overdue?' late':''}" href="#/project/${m.p.id}" title="Update due: ${m.p.title}">${chip(m.p.title)}</a>`:html`<a class="cal-due custom" href="#/project/${m.p.id}" title="Deadline set by ${S.displayName(m.d.by)}: ${m.d.title} — ${m.p.title}">${chip(m.d.title)}</a>`)}</td>`;
           })}</tr>`)}</tbody></table>${windows.length?html`<ul class="calendar-windows">${windows.map(e=>html`<li><button class="link" data-act="calendar-open" data-event="${e.id}">${S.comp(e.comp).short}: ${e.label}</button><span>${e.when} · day not specified</span></li>`)}</ul>`:''}</div>`;
         })}</div>
         <section class="panel"><h3>Dates to confirm</h3><ul class="plain">${events.filter(e=>!e.date&&!e.month&&!e.months).map(e=>html`<li><button class="link" data-act="calendar-open" data-event="${e.id}">${S.comp(e.comp).short}: ${e.label}</button> <span class="small muted">${e.when}</span></li>`)}</ul></section>
@@ -747,7 +774,7 @@
 
   // ---------- demo walkthrough ----------
   const DEMOS = [
-    ['Application draft', 'Continue the air quality proposal through all six steps and submit it. Switch to Dr. Lam Mei Ling’s teacher account to review the request in Mail.', 'ethan', 'student', '#/apply/demo-draft', 'A saved draft and an endorsement request in the teacher’s Mail.'],
+    ['Application draft', 'Continue the air quality proposal through all six steps and submit it. Switch to Ms. Lam Miu Lan’s teacher account to review the request in Mail.', 'ethan', 'student', '#/apply/demo-draft', 'A saved draft and an endorsement request in the teacher’s Mail.'],
     ['Return and resubmit', 'Read the teacher’s requested changes on the solar charging proposal, then revise and submit it again.', 'ryan', 'student', '#/project/demo-returned', 'The status changes from Returned by teacher to Awaiting teacher endorsement.'],
     ['Teacher endorsement', 'Open the airflow application, download the evidence and choose Endorse or Return with comments.', 'ksm', 'teacher', '#/endorse/p-schlieren', 'An endorsed application appears in the committee’s review queue. A returned one goes back to the student.'],
     ['Committee review and mentor', 'Review the rain-aware walking routes application, choose a mentor and approve it.', 'kwc', 'committee', '#/review/p-rain', 'An active project, one more Samsung SFT place taken and notifications to the team and mentor.'],
@@ -757,7 +784,7 @@
     ['Final submission', 'Upload a final report on the pond logger, then mark the final submission done.', 'ethan', 'student', '#/project/demo-active', 'The project changes to Final submitted and a result can be recorded.'],
     ['Record a result', 'The vibration monitor already has a sample final report. Record a result for it.', 'marcus', 'student', '#/project/demo-submitted', 'The project becomes Completed and its result appears in the register export.'],
     ['Completed and declined entries', 'Inspect the completed microplastics project and the recycling sorter that was not approved.', 'kwc', 'committee', '#/register', 'Decisions, mentor feedback, downloadable files and the completed result remain available.'],
-    ['Old Boy recruitment', 'Download the construction project brief and shortlist Ryan. Use Dean Cho’s committee account under Eligibility to confirm him and name a teacher.', 'david', 'mentor', '#/postings/o-vision', 'A team project is created with David as mentor; further confirmed students join the same project.'],
+    ['Old Boy recruitment', 'Download the construction project brief and shortlist Ryan. Use Mr. Cho Ka Wai’s committee account under Eligibility to confirm him and name a teacher.', 'david', 'mentor', '#/postings/o-vision', 'A team project is created with David as mentor; further confirmed students join the same project.'],
     ['Year-level targeting', 'Browse postings as Ryan, then as Aaron. Ryan sees the junior robot project; Aaron sees the senior carbon dashboard.', 'ryan', 'student', '#/postings', 'The lists and direct posting links respect the selected account’s year level.'],
     ['Post an opportunity', 'Create a project with a brief, available places and a target year group.', 'isaac', 'mentor', '#/postings/new', 'Students in that year group can apply and their applications appear under the posting.'],
     ['Teacher proposal', 'Propose a project with students and an optional mentor. The campus heat survey is also ready for committee review.', 'wkh', 'teacher', '#/propose', 'Teacher proposals go directly to committee review without a separate endorsement step.'],
@@ -777,13 +804,14 @@
   async function showBlob(name, blob) {
     const box = document.getElementById('filebox');
     const isText = /^text\/|json|csv|xml/.test(blob.type || '') || /\.(txt|csv|md|json|log)$/i.test(name);
+    const isPdf = blob.type === 'application/pdf' || /\.pdf$/i.test(name);
     const body = isText ? await blob.text() : null;
     const url = URL.createObjectURL(blob);
     box.innerHTML = html`
       <div class="filebox-back" data-act="file-close"></div>
       <div class="filebox-panel" role="dialog" aria-label="${name}">
         <div class="panel-head"><h3>${name}</h3><span class="muted small">${size(blob.size)}${blob.type ? ' · ' + blob.type : ''}</span></div>
-        ${body !== null ? html`<pre class="filebox-body">${body}</pre>` : html`<p class="muted small">This file type cannot be shown here. Download it to open it.</p>`}
+        ${isPdf ? html`<iframe class="filebox-doc" src="${url}" title="${name}"></iframe>` : body !== null ? html`<pre class="filebox-body">${body}</pre>` : html`<p class="muted small">This file type cannot be previewed here. Download it to open it.</p>`}
         <div class="form-actions">
           <span>${body !== null ? html`<button class="btn ghost small" data-act="file-copy">Copy contents</button>` : ''}</span>
           <span class="flex"><a class="btn small ghost" href="${url}" download="${name}">Download</a><button class="btn small" data-act="file-close">Close</button></span>
@@ -846,6 +874,34 @@
     window.scrollTo(0, 0);
   }
 
+  // ---------- list tools (search + sort, applied to the DOM so typing keeps focus) ----------
+  function listTools(tableId, sorts, placeholder) {
+    return html`<div class="list-tools">
+      <input type="search" data-filter="${tableId}" placeholder="${placeholder || 'Search…'}" aria-label="Search this list">
+      <label class="field inline"><span class="muted small">Sort by</span>
+        <select data-sort="${tableId}"><option value="">—</option>${sorts.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select></label>
+      <span class="count-note muted small" id="${tableId}-count"></span>
+    </div>`;
+  }
+  function applyFilter(input) {
+    const q = input.value.trim().toLowerCase();
+    const table = document.getElementById(input.dataset.filter);
+    if (!table) return;
+    const rows = [...table.querySelectorAll('tbody tr')];
+    let shown = 0;
+    for (const tr of rows) { const hit = !q || tr.textContent.toLowerCase().includes(q); tr.hidden = !!q && !hit; if (hit) shown++; }
+    const note = document.getElementById(input.dataset.filter + '-count');
+    if (note) note.textContent = q ? `${shown} of ${rows.length} rows` : '';
+  }
+  function applySort(sel) {
+    const table = document.getElementById(sel.dataset.sort);
+    if (!table || !sel.value) return;
+    const tb = table.tBodies[0];
+    const dir = sel.value.startsWith('-') ? -1 : 1;
+    const key = sel.value.replace(/^-/, '');
+    [...tb.rows].sort((a, b) => dir * ((a.dataset[key] || '').localeCompare(b.dataset[key] || '', undefined, { numeric: true }))).forEach((r) => tb.appendChild(r));
+  }
+
   // ---------- events ----------
   document.addEventListener('click', async (e) => {
     const el = e.target.closest('[data-act]');
@@ -865,6 +921,7 @@
     }
     else if (act === 'wiz-back') { readWizard(el.closest('form')); wizard.step--; route(); }
     else if (act === 'read') { S.markRead(el.dataset.mail); }
+    else if (act === 'del-deadline') { try { S.removeDeadline(el.dataset.id, me.id); notify('Deadline removed.'); } catch (err) { notify(err.message, 'bad'); } route(); }
     else if (act === 'final') { S.submitFinal(hash.split('/')[2], me.id); notify('Final submission recorded and notifications added to Mail.'); route(); }
     else if (act === 'shortlist') { S.shortlist(hash.split('/')[2], el.dataset.app, me.id, el.dataset.yes === '1'); notify(el.dataset.yes === '1' ? 'Applicant sent to the committee for eligibility review.' : 'Applicant declined.'); route(); }
     else if (act === 'csv') {
@@ -886,7 +943,14 @@
     }
   });
 
+  document.addEventListener('input', (e) => {
+    const el = e.target.closest('[data-filter]');
+    if (el) applyFilter(el);
+  });
+
   document.addEventListener('change', (e) => {
+    const sort = e.target.closest('[data-sort]');
+    if (sort) { applySort(sort); return; }
     if (e.target.matches('[data-act=calendar-filter]')) { calendarCompetition = e.target.value; route(); }
     if (e.target.matches('[data-act=calendar-check]')) { S.setCalendarCheck(S.me().id, e.target.dataset.event, Number(e.target.dataset.index), e.target.checked); const box = e.target.closest('details'); const count = box.querySelector('summary > .small'); count.textContent = `${box.querySelectorAll('input:checked').length}/${box.querySelectorAll('input').length} prepared`; }
     if (e.target.matches('[data-act="switch-role"]') && e.target.value) {
@@ -932,6 +996,7 @@
           break;
         }
         case 'comment': S.comment(projectId, form.dataset.log, me.id, fd.get('text')); notify('Feedback sent to the team.'); break;
+        case 'add-deadline': S.addDeadline(projectId, fd.get('title'), fd.get('date'), me.id); notify('Deadline added; the team has been notified in Mail.'); break;
         case 'upload': { const f = fd.get('file'); if (!f || !f.size) throw new Error('Choose a file first.'); await S.addFile(projectId, f, fd.get('category'), me.id); notify(`Uploaded ${f.name}.`); break; }
         case 'assign-mentor': if (!fd.get('mentorId')) throw new Error('Pick a mentor.'); S.assignMentor(projectId, fd.get('mentorId'), me.id); notify('Mentor assigned and emailed.'); break;
         case 'result': S.recordResult(projectId, me.id, fd.get('result')); notify('Result saved.'); break;

@@ -117,6 +117,30 @@ window.RCP = window.RCP || {};
   };
   S.calendarChecked = (userId, eventId, index) => !!db.calendarChecks?.[userId + ':' + eventId + ':' + index];
 
+  // ---------- custom deadlines (the mentor or teacher-in-charge of a project sets dates for their own project) ----------
+  S.deadlinesFor = (projectId) => (db.customDates || []).filter((d) => d.projectId === projectId).sort((a, b) => a.date.localeCompare(b.date));
+  S.allDeadlines = () => db.customDates || [];
+  S.addDeadline = function (projectId, title, date, by) {
+    const p = S.project(projectId);
+    if (!p) throw new Error('Project not found.');
+    if (p.mentorId !== by && p.teacherId !== by) throw new Error('Only the mentor or the teacher-in-charge of this project can set its deadlines.');
+    title = String(title || '').trim();
+    if (!title || !date) throw new Error('Give the deadline a name and a date.');
+    (db.customDates ||= []).push({ id: uid('d'), projectId, title: title.slice(0, 80), date, by, createdAt: nowIso() });
+    S.log(by, 'set a deadline “' + title + '” (' + date + ') on ' + p.title, projectId);
+    for (const m of p.members) if (m !== by) db.mail.push({ id: uid('m'), to: m, from: by, at: nowIso(), subject: 'Deadline set: ' + title, body: S.displayName(by) + ' set a deadline “' + title + '” for ' + p.title + ' on ' + date + '.', read: false });
+    save();
+  };
+  S.removeDeadline = function (id, by) {
+    const d = (db.customDates || []).find((x) => x.id === id);
+    if (!d) return;
+    const p = S.project(d.projectId);
+    if (d.by !== by && p.mentorId !== by && p.teacherId !== by) throw new Error('You can only remove deadlines you set for your own project.');
+    db.customDates = db.customDates.filter((x) => x.id !== id);
+    S.log(by, 'removed the deadline “' + d.title + '” from ' + p.title, d.projectId);
+    save();
+  };
+
   // ---------- workflow actions ----------
   S.saveDraft = function (draft, by) {
     let p = draft.id ? S.project(draft.id) : null;
