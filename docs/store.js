@@ -85,7 +85,7 @@ window.RCP = window.RCP || {};
   };
 
   // ---------- logs cadence ----------
-  // Slide 9: monthly student-led industry updates; alumnus check-ins every two months.
+  // Slide 9: monthly student-led industry updates; Old Boy check-ins every two months.
   // The deck gives no interval for Stage 2 or teacher-led projects; monthly is the demo policy.
   S.cadenceLabel = p => p.origin === 'oldboy' ? 'Check-in every 2 months' : p.stage === 1 && p.origin === 'student' ? 'Monthly update' : 'Monthly update (demo policy)';
   S.logDue = function (p) {
@@ -243,7 +243,7 @@ window.RCP = window.RCP || {};
     S.log(by, `recorded the result for “${p.title}”: ${p.result}`, p.id);
   };
 
-  // ---------- alumnus postings (slide 9, second flow) ----------
+  // ---------- Old Boy postings (slide 9, second flow) ----------
   S.post = function (by, data) {
     const o = { id: uid('o'), by, status: 'open', createdAt: nowIso(), applications: [], ...data };
     db.postings.unshift(o);
@@ -262,7 +262,7 @@ window.RCP = window.RCP || {};
     const a = o.applications.find((x) => x.id === appId);
     a.status = accept ? 'shortlisted' : 'declined';
     if (accept) S.mail('committee', `Eligibility check: ${S.displayName(a.studentId)} for “${o.title}”`, `${S.displayName(by)} shortlisted this applicant.`, { label: 'Check eligibility', href: `#/eligibility` });
-    S.mail(a.studentId, accept ? `Shortlisted: ${o.title}` : `Application update: ${o.title}`, accept ? 'The alumnus shortlisted you. The committee will confirm eligibility.' : 'Thank you for applying. The places have gone to other applicants this time.', { label: 'Industry projects', href: '#/postings' });
+    S.mail(a.studentId, accept ? `Shortlisted: ${o.title}` : `Application update: ${o.title}`, accept ? 'The Old Boy shortlisted you. The committee will confirm eligibility.' : 'Thank you for applying. The places have gone to other applicants this time.', { label: 'Industry projects', href: '#/postings' });
     S.log(by, `${accept ? 'shortlisted' : 'declined'} ${S.displayName(a.studentId)} for “${o.title}”`);
   };
   S.confirmEligibility = function (postingId, appId, by, eligible, teacherId) {
@@ -281,7 +281,7 @@ window.RCP = window.RCP || {};
           id: uid('p'), postingId: o.id, stage: 1, origin: 'oldboy', title: o.title, partner: o.org, competitionId: null,
           abstract: o.description, members: [], teacherId: teacherId || null, mentorId: o.by, experience: a.cv,
           status: 'active', createdAt: nowIso(), endorsement: null,
-          decision: { by, at: nowIso(), outcome: 'approved', note: 'Eligibility confirmed (Alumni-initiated project).' },
+          decision: { by, at: nowIso(), outcome: 'approved', note: 'Eligibility confirmed (Old Boy-initiated project).' },
           checklist: Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, ['proposal', 'experience', 'decision', 'mentor', 'endorsement'].includes(k)])),
           logs: [], files: [],
         };
@@ -329,7 +329,7 @@ window.RCP = window.RCP || {};
     S.log(by, `uploaded ${category.toLowerCase()} “${file.name}” to “${p.title}”`, p.id);
     return id;
   };
-  /** Files attached to an alumnus's project posting (brief, specs, sample data). */
+  /** Files attached to an Old Boy's project posting (brief, specs, sample data). */
   S.addPostingFile = async function (postingId, file, by) {
     const id = await putBlob(file);
     const o = S.posting(postingId);

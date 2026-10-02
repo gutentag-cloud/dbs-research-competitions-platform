@@ -45,12 +45,12 @@
 
   // ---------- chrome ----------
   const NAV = {
-    student: [['#/', 'My projects'], ['#/apply', 'New application'], ['#/postings', 'Alumni projects'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
+    student: [['#/', 'My projects'], ['#/apply', 'New application'], ['#/postings', 'Old Boy projects'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
     teacher: [['#/', 'Overview'], ['#/endorse', 'Endorsements'], ['#/propose', 'Propose a project'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
     mentor: [['#/', 'My mentees'], ['#/postings', 'My posted projects'], ['#/postings/new', 'Post a project'], ['#/calendar', 'Calendar']],
     committee: [['#/', 'Dashboard'], ['#/review', 'Review queue'], ['#/quota', 'Quota tracker'], ['#/eligibility', 'Eligibility'], ['#/register', 'Register'], ['#/calendar', 'Calendar'], ['#/audit', 'Audit log']],
   };
-  const ROLE_LABEL = { student: 'Student', teacher: 'Teacher', mentor: 'alumni mentor', committee: 'Committee' };
+  const ROLE_LABEL = { student: 'Student', teacher: 'Teacher', mentor: 'Old Boy mentor', committee: 'Committee' };
 
   function shell(me, role, route, body) {
     const unread = S.inbox(me, role).filter((m) => !m.read).length;
@@ -61,7 +61,7 @@
     const otherRoles = me.roles.filter((r) => r !== role);
     return html`
       <header class="topbar">
-        <a class="brand" href="#/"><img src="assets/mark.svg" alt=""><span><b>Research &amp; Competitions</b><small>Proof of concept · demo data · not an official school system</small></span></a>
+        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>Proof of concept · demo data · not an official school system</small></span></a>
         <nav class="nav">${links}<a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
         <div class="whoami">
           ${avatar(me.id)}
@@ -81,15 +81,15 @@
     const groups = [
       ['student', 'Students', 'Apply, keep logs, upload files'],
       ['teacher', 'Teachers', 'Endorse applications, follow projects'],
-      ['mentor', 'alumni mentors', 'Post projects, mentor teams'],
+      ['mentor', 'Old Boy mentors', 'Post projects, mentor teams'],
       ['committee', 'Committee', 'Review, match mentors, set quotas'],
     ];
     return html`
       <div class="login">
         <div class="login-hero">
-          <img src="assets/mark.svg" alt="Fairview College crest">
+          <img src="assets/crest.png" alt="Diocesan Boys' School crest">
           <h1>Research &amp; Competitions Platform</h1>
-          <p>Research projects and competition entries at Fairview College.</p><p class="poc-note">A proof of concept for the proposed platform. Every person, project and file here is made up, and this is not an official school system.</p>
+          <p>Research projects and competition entries at Diocesan Boys’ School.</p><p class="poc-note">A proof of concept for the proposed platform. Every person, project and file here is made up, and this is not an official school system.</p>
           <div class="login-note"><p>Find a project, put forward a proposal or catch up with your team.</p><a href="#/demo">Try the sample workflows <span aria-hidden="true">→</span></a><small>Proof of concept for the 2026–27 school year</small></div>
         </div>
         <div class="login-pick">
@@ -162,7 +162,7 @@
           <div class="panel"><h3>Coming deadlines</h3>
             <ul class="plain">${soon.map((c) => html`<li><b>${c.short}</b> <span class="muted small">${c.hkRound}</span><br><span class="small ${daysUntil(c.deadline) < 21 ? 'tone-bad-text' : ''}">${daysUntil(c.deadline)} days · ${date(c.deadline)}</span></li>`)}</ul>
             <a class="small" href="#/competitions">All competitions →</a></div>
-          <div class="panel"><h3>Posted by alumni</h3>
+          <div class="panel"><h3>Posted by Old Boys</h3>
             ${open.map((o) => html`<a class="mini" href="#/postings/${o.id}"><b>${o.title}</b><span class="muted small">${o.places} places · ${o.hours}</span></a>`)}
             <a class="small" href="#/postings">Browse all →</a></div>
         </aside>
@@ -229,7 +229,7 @@
         ${stat(endorsement.length, 'awaiting teacher endorsement', '#/register', '')}
         ${stat(active.length, 'active projects', '#/register', 'good')}
         ${stat(overdue.length, 'progress logs overdue', '#/register', overdue.length ? 'bad' : '')}
-        ${stat(elig, 'alumni applicants to check', '#/eligibility', elig ? 'warn' : '')}
+        ${stat(elig, 'Old Boy applicants to check', '#/eligibility', elig ? 'warn' : '')}
       </div>
       <div class="grid-2">
         <section class="panel">
@@ -276,7 +276,7 @@
     if (step === 0) {
       body = html`
         <div class="choice-grid">
-          <label class="choice ${w.stage === 1 ? 'on' : ''}"><input type="radio" name="stage" value="1" ${w.stage === 1 ? raw('checked') : ''}><b>Stage 1 · Industry project</b><span>Research with an industry partner and an alumni mentor.</span></label>
+          <label class="choice ${w.stage === 1 ? 'on' : ''}"><input type="radio" name="stage" value="1" ${w.stage === 1 ? raw('checked') : ''}><b>Stage 1 · Industry project</b><span>Research with an industry partner and an Old Boy mentor.</span></label>
           <label class="choice ${w.stage === 2 ? 'on' : ''}"><input type="radio" name="stage" value="2" ${w.stage === 2 ? raw('checked') : ''}><b>Stage 2 · Research competition</b><span>Enter a research competition through the school.</span></label>
         </div>
         ${w.stage === 2 ? html`
@@ -286,7 +286,7 @@
             <b>${comp.short}</b>: ${comp.hkRound}. Final: ${comp.final}.
             ${q.places !== null ? html`<br>School places: ${q.taken} of ${q.places} taken, ${q.pending} in progress.${q.full ? ' This competition is full; you can still apply to the waiting list.' : ''}` : html`<br>Considered case by case.`}
           </div>` : html`
-          <label class="field"><span>Company or partner <small>(if known)</small></span><input name="partner" value="${w.partner}" placeholder="e.g. a the robotics programme partner, or leave blank to be matched"></label>`}`;
+          <label class="field"><span>Company or partner <small>(if known)</small></span><input name="partner" value="${w.partner}" placeholder="e.g. a PRISM partner, or leave blank to be matched"></label>`}`;
     } else if (step === 1) {
       body = html`
         <label class="field"><span>Project title</span><input name="title" value="${w.title}" required maxlength="120" placeholder="A clear, specific title"></label>
@@ -361,7 +361,7 @@
         <div>
           <div class="track">${trackLabel(p)}</div>
           <h1>${p.title || 'Untitled draft'}</h1>
-          <div class="head-meta">${badge(p.status)} <span class="muted small">Started ${date(p.createdAt)}${p.origin === 'teacher' ? ' · Teacher-initiated' : p.origin === 'oldboy' ? ' · Alumni-initiated' : ''}</span></div>
+          <div class="head-meta">${badge(p.status)} <span class="muted small">Started ${date(p.createdAt)}${p.origin === 'teacher' ? ' · Teacher-initiated' : p.origin === 'oldboy' ? ' · Old Boy-initiated' : ''}</span></div>
         </div>
         <div class="head-actions">
           ${isMember && ['draft', 'returned'].includes(p.status) ? html`<a class="btn" href="#/apply/${p.id}">${p.status === 'returned' ? 'Revise and resubmit' : 'Continue application'}</a>` : ''}
@@ -410,7 +410,7 @@
             <dl class="kv">
               <dt>Team</dt><dd>${people(p.members)}</dd>
               <dt>Teacher-in-charge</dt><dd>${p.teacherId ? people([p.teacherId]) : '—'}</dd>
-              <dt>alumni mentor</dt><dd>${p.mentorId ? people([p.mentorId]) : html`<span class="muted">Not assigned</span>`}</dd>
+              <dt>Old Boy mentor</dt><dd>${p.mentorId ? people([p.mentorId]) : html`<span class="muted">Not assigned</span>`}</dd>
               ${p.industryTutor ? html`<dt>Industrial tutor</dt><dd>${p.industryTutor}</dd>` : ''}
             </dl>
             ${role === 'committee' && ['active', 'review'].includes(p.status) ? html`
@@ -442,7 +442,7 @@
           ${p.industryFollowUp ? html`<div class="panel"><h3>Taking it further</h3><p class="small">Recommended for a long-term industry project by ${S.displayName(p.industryFollowUp.by)}, ${date(p.industryFollowUp.at)}.${p.industryFollowUp.note ? html`<br><span class="muted">“${p.industryFollowUp.note}”</span>` : ''}</p></div>` : ''}
           ${role === 'committee' && ['submitted', 'completed'].includes(p.status) && !p.industryFollowUp ? html`
             <form class="panel" data-form="industry-followup"><h3>Taking it further</h3>
-              <p class="small muted">Stage 2, step 5: recommend a finished entry for a long-term industry project with an alumnus or partner.</p>
+              <p class="small muted">Stage 2, step 5: recommend a finished entry for a long-term industry project with an Old Boy or partner.</p>
               <label class="field"><span>Note to the team <small>(optional)</small></span><input name="note" maxlength="200" placeholder="Who could host it, or what to develop"></label>
               <button class="btn small">Recommend for Stage 1</button></form>` : ''}
           ${(isMember || role === 'committee') && p.status === 'submitted' ? html`<form class="panel" data-form="result"><h3>Result</h3><label class="field"><span>Outcome or award</span><input name="result" placeholder="e.g. HKSSPC Senior — Second Prize" required maxlength="160"></label><button class="btn small">Record result</button></form>` : ''}
@@ -479,7 +479,7 @@
           ${comp ? html`<div class="panel"><h3>${comp.short} places</h3>${quotaBar(comp.id)}${q.full ? html`<p class="small tone-bad-text">All places are taken. Increase the quota before approving another entry.</p>` : ''}</div>` : ''}
           <form class="panel" data-form="${kind}">
             <h3>${kind === 'endorse' ? 'Your endorsement' : 'Committee decision'}</h3>
-            ${kind === 'review' ? html`<label class="field"><span>Assign alumni mentor</span><select name="mentorId"><option value="">Later</option>${S.usersWith('mentor').map((u) => html`<option value="${u.id}">${u.name}${u.title ? ' — ' + u.title : ''}</option>`)}</select></label>` : ''}
+            ${kind === 'review' ? html`<label class="field"><span>Assign Old Boy mentor</span><select name="mentorId"><option value="">Later</option>${S.usersWith('mentor').map((u) => html`<option value="${u.id}">${u.name}${u.title ? ' — ' + u.title : ''}</option>`)}</select></label>` : ''}
             <label class="field"><span>Comment ${kind === 'endorse' ? 'to the students and committee' : 'to the team'}</span><textarea name="note" rows="4" placeholder="${kind === 'endorse' ? 'Why you support it, or what to change' : 'Reason for the decision'}"></textarea></label>
             <div class="form-actions">
               <button class="btn ghost" name="choice" value="no">${kind === 'endorse' ? 'Return with comments' : 'Do not approve'}</button>
@@ -548,12 +548,12 @@
         </div>`)}</div>` : empty('No shortlisted applicants to check.')}`;
   }
 
-  // ---------- alumnus postings ----------
+  // ---------- Old Boy postings ----------
   function viewPostings(me, role) {
     let list = role === 'mentor' ? S.db.postings.filter((o) => o.by === me.id) : S.db.postings.filter((o) => o.status === 'open');
     if (role === 'student') list = list.filter((o) => audienceOk(o, me));
     return html`
-      <div class="page-head"><div><h1>${role === 'mentor' ? 'My posted projects' : 'Alumni projects'}</h1><p class="muted">${role === 'mentor' ? 'Problems you have posted for students to take on.' : 'Research opportunities offered by alumni.'}</p></div>${role === 'mentor' ? html`<a class="btn" href="#/postings/new">Post a project</a>` : ''}</div>
+      <div class="page-head"><div><h1>${role === 'mentor' ? 'My posted projects' : 'Old Boy projects'}</h1><p class="muted">${role === 'mentor' ? 'Problems you have posted for students to take on.' : 'Research opportunities offered by Old Boys.'}</p></div>${role === 'mentor' ? html`<a class="btn" href="#/postings/new">Post a project</a>` : ''}</div>
       ${list.length ? html`<div class="cards">${list.map((o) => html`
         <a class="card" href="#/postings/${o.id}">
           <div class="card-top"><span class="track">${o.org}</span><span class="badge tone-good">${o.places} places</span></div>
@@ -626,9 +626,9 @@
         <div class="check-grid">${S.usersWith('student').map((u) => html`<label class="check"><input type="checkbox" name="members" value="${u.id}">${avatar(u.id)} ${u.name} <span class="muted small">${u.form}</span></label>`)}</div>
         <label class="field"><span>Track</span>
           <select name="competitionId"><option value="">School-based / industry project</option>${S.db.competitions.map((c) => html`<option value="${c.id}">${c.short} — ${c.name}</option>`)}</select></label>
-        <label class="field"><span>Company or partner <small>(if any, and no competition chosen)</small></span><input name="partner" maxlength="120" placeholder="e.g. a the robotics programme partner"></label>
+        <label class="field"><span>Company or partner <small>(if any, and no competition chosen)</small></span><input name="partner" maxlength="120" placeholder="e.g. a PRISM partner"></label>
         <label class="field"><span>Team's relevant experience</span><textarea name="experience" rows="3" required></textarea></label>
-        <label class="field"><span>alumni mentor <small>(optional)</small></span>
+        <label class="field"><span>Old Boy mentor <small>(optional)</small></span>
           <select name="mentorId"><option value="">None yet</option>${S.usersWith('mentor').map((u) => html`<option value="${u.id}">${u.name}${u.title ? ' — ' + u.title : ''}</option>`)}</select></label>
         <div class="form-actions"><span></span><button class="btn">Send to committee</button></div>
       </form>`;
@@ -639,7 +639,7 @@
     const tiers = [
       [1, 'Tier 1 · Very high-profile', 'The flagship international entries. Places are few and set by the committee; apply early.'],
       [2, 'Tier 2 · Other research competitions', 'Strong options with more places — good first external entries.'],
-      [3, 'Case by case', 'Anything else worth entering under the school name; propose it and the committee will look.'],
+      [3, 'Case by case', 'Anything else worth entering under the DBS name; propose it and the committee will look.'],
     ];
     const byDeadline = (a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999');
     return html`
@@ -687,7 +687,7 @@
     const months = Array.from({length:12}, (_,i) => new Date(2026,8+i,1));
     return html`
       <div class="page-head"><div><h1>Calendar 2026–27</h1><p class="muted">What is due, what to prepare and when your next project update is needed.</p></div></div>
-      <div class="calendar-source small"><b>Checked against the platform proposal.</b> Dates without a year are placed in this planning year. Month windows remain approximate; exact current-year organiser dates need confirmation. Preparation below is a suggested platform checklist based on slides 11 and 13, rather than a list of organiser requirements.</div>
+      <div class="calendar-source small"><b>Checked against CMS Proposal v3, slides 6–9.</b> Dates without a year are placed in this planning year. Month windows remain approximate; exact current-year organiser dates need confirmation. Preparation below is a suggested platform checklist based on slides 11 and 13, rather than a list of organiser requirements.</div>
       <div class="calendar-tools">
         <div class="role-tabs" aria-label="Calendar view"><button data-act="calendar-mode" data-mode="agenda" class="${calendarMode === 'agenda' ? 'on' : ''}" aria-pressed="${calendarMode === 'agenda'}">Deadlines &amp; preparation</button><button data-act="calendar-mode" data-mode="months" class="${calendarMode === 'months' ? 'on' : ''}" aria-pressed="${calendarMode === 'months'}">Month view</button></div>
         <label class="field"><span>Competition</span><select data-act="calendar-filter"> <option value="all">All competitions and industry projects</option>${S.db.competitions.map(c => html`<option value="${c.id}" ${calendarCompetition === c.id ? raw('selected') : ''}>${c.short}</option>`)}</select></label>
@@ -747,24 +747,24 @@
 
   // ---------- demo walkthrough ----------
   const DEMOS = [
-    ['Application draft', 'Continue the air quality proposal through all six steps and submit it. Switch to Dr. Maya Rosen’s teacher account to review the request in Mail.', 'ethan', 'student', '#/apply/demo-draft', 'A saved draft and an endorsement request in the teacher’s Mail.'],
+    ['Application draft', 'Continue the air quality proposal through all six steps and submit it. Switch to Dr. Lam Mei Ling’s teacher account to review the request in Mail.', 'ethan', 'student', '#/apply/demo-draft', 'A saved draft and an endorsement request in the teacher’s Mail.'],
     ['Return and resubmit', 'Read the teacher’s requested changes on the solar charging proposal, then revise and submit it again.', 'ryan', 'student', '#/project/demo-returned', 'The status changes from Returned by teacher to Awaiting teacher endorsement.'],
-    ['Teacher endorsement', 'Open the airflow application, download the evidence and choose Endorse or Return with comments.', 'tic3', 'teacher', '#/endorse/p-schlieren', 'An endorsed application appears in the committee’s review queue. A returned one goes back to the student.'],
-    ['Committee review and mentor', 'Review the rain-aware walking routes application, choose a mentor and approve it.', 'dean', 'committee', '#/review/p-rain', 'An active project, one more Samsung SFT place taken and notifications to the team and mentor.'],
-    ['Full competition', 'Try approving the leaf disease application while both Geneva places are taken. Increase Geneva places to 3 on the Quota tracker and try again.', 'dean', 'committee', '#/review/demo-full', 'Approval is blocked before the quota increases; afterwards the entry can be approved.'],
+    ['Teacher endorsement', 'Open the airflow application, download the evidence and choose Endorse or Return with comments.', 'ksm', 'teacher', '#/endorse/p-schlieren', 'An endorsed application appears in the committee’s review queue. A returned one goes back to the student.'],
+    ['Committee review and mentor', 'Review the rain-aware walking routes application, choose a mentor and approve it.', 'kwc', 'committee', '#/review/p-rain', 'An active project, one more Samsung SFT place taken and notifications to the team and mentor.'],
+    ['Full competition', 'Try approving the leaf disease application while both Geneva places are taken. Increase Geneva places to 3 on the Quota tracker and try again.', 'kwc', 'committee', '#/review/demo-full', 'Approval is blocked before the quota increases; afterwards the entry can be approved.'],
     ['Logs and attachments', 'Post an update on the pond logger and attach a file. Reload the page and download the uploaded file.', 'ethan', 'student', '#/project/demo-active', 'The log and attachment remain after reload and the next update is due in one month (demo policy).'],
-    ['Mentor feedback', 'Read the pond logger’s measurements and add feedback to its progress log.', 'mentor4', 'mentor', '#/project/demo-active', 'The comment appears below the log and in Ethan’s Mail.'],
+    ['Mentor feedback', 'Read the pond logger’s measurements and add feedback to its progress log.', 'kho', 'mentor', '#/project/demo-active', 'The comment appears below the log and in Ethan’s Mail.'],
     ['Final submission', 'Upload a final report on the pond logger, then mark the final submission done.', 'ethan', 'student', '#/project/demo-active', 'The project changes to Final submitted and a result can be recorded.'],
     ['Record a result', 'The vibration monitor already has a sample final report. Record a result for it.', 'marcus', 'student', '#/project/demo-submitted', 'The project becomes Completed and its result appears in the register export.'],
-    ['Completed and declined entries', 'Inspect the completed microplastics project and the recycling sorter that was not approved.', 'dean', 'committee', '#/register', 'Decisions, mentor feedback, downloadable files and the completed result remain available.'],
-    ['alumnus recruitment', 'Download the construction project brief and shortlist Ryan. Use Dr. Ada Mensah’s committee account under Eligibility to confirm him and name a teacher.', 'wei', 'mentor', '#/postings/o-vision', 'A team project is created with Wei Lin as mentor; further confirmed students join the same project.'],
+    ['Completed and declined entries', 'Inspect the completed microplastics project and the recycling sorter that was not approved.', 'kwc', 'committee', '#/register', 'Decisions, mentor feedback, downloadable files and the completed result remain available.'],
+    ['Old Boy recruitment', 'Download the construction project brief and shortlist Ryan. Use Dean Cho’s committee account under Eligibility to confirm him and name a teacher.', 'david', 'mentor', '#/postings/o-vision', 'A team project is created with David as mentor; further confirmed students join the same project.'],
     ['Year-level targeting', 'Browse postings as Ryan, then as Aaron. Ryan sees the junior robot project; Aaron sees the senior carbon dashboard.', 'ryan', 'student', '#/postings', 'The lists and direct posting links respect the selected account’s year level.'],
-    ['Post an opportunity', 'Create a project with a brief, available places and a target year group.', 'omar', 'mentor', '#/postings/new', 'Students in that year group can apply and their applications appear under the posting.'],
-    ['Teacher proposal', 'Propose a project with students and an optional mentor. The campus heat survey is also ready for committee review.', 'tic4', 'teacher', '#/propose', 'Teacher proposals go directly to committee review without a separate endorsement step.'],
+    ['Post an opportunity', 'Create a project with a brief, available places and a target year group.', 'isaac', 'mentor', '#/postings/new', 'Students in that year group can apply and their applications appear under the posting.'],
+    ['Teacher proposal', 'Propose a project with students and an optional mentor. The campus heat survey is also ready for committee review.', 'wkh', 'teacher', '#/propose', 'Teacher proposals go directly to committee review without a separate endorsement step.'],
     ['Competition dates', 'Open the competition list and calendar, then compare the ISEF registration deadline.', 'ethan', 'student', '#/competitions', 'The same sample deadline appears on the competition card and the calendar.'],
-    ['Register and export', 'Export the register as CSV and compare its statuses and results with the table.', 'dean', 'committee', '#/register', 'The download includes each entry’s team, teacher, mentor, decision, log count and result.'],
-    ['Mail and audit', 'Open notifications and follow a project link, then check the Audit log after making a decision or posting a log.', 'dean', 'committee', '#/mail', 'Notifications open the relevant page and the audit records who acted and when.'],
-    ['Overdue updates', 'Inspect the domain monitoring project and its overdue update on the teacher overview.', 'tic2', 'teacher', '#/project/p-domains', 'The project shows its next monthly update date (demo policy); posting a new log restarts the interval.'],
+    ['Register and export', 'Export the register as CSV and compare its statuses and results with the table.', 'kwc', 'committee', '#/register', 'The download includes each entry’s team, teacher, mentor, decision, log count and result.'],
+    ['Mail and audit', 'Open notifications and follow a project link, then check the Audit log after making a decision or posting a log.', 'kwc', 'committee', '#/mail', 'Notifications open the relevant page and the audit records who acted and when.'],
+    ['Overdue updates', 'Inspect the domain monitoring project and its overdue update on the teacher overview.', 'cal', 'teacher', '#/project/p-pwc', 'The project shows its next monthly update date (demo policy); posting a new log restarts the interval.'],
   ];
   function viewDemo() {
     return html`<div class="page-head"><div><h1>Try the demo</h1><p class="muted">Choose an example to open the account and page needed for the task.</p></div><a class="btn ghost" href="#/">Back to workspace</a></div>
@@ -868,7 +868,7 @@
     else if (act === 'final') { S.submitFinal(hash.split('/')[2], me.id); notify('Final submission recorded and notifications added to Mail.'); route(); }
     else if (act === 'shortlist') { S.shortlist(hash.split('/')[2], el.dataset.app, me.id, el.dataset.yes === '1'); notify(el.dataset.yes === '1' ? 'Applicant sent to the committee for eligibility review.' : 'Applicant declined.'); route(); }
     else if (act === 'csv') {
-      await showBlob('research-competitions-register.csv', new Blob([S.exportCsv()], { type: 'text/csv' }));
+      await showBlob('dbs-research-competitions-register.csv', new Blob([S.exportCsv()], { type: 'text/csv' }));
     } else if (act === 'download') {
       const blob = await S.getFile(el.dataset.file);
       if (!blob) { notify('That file is no longer stored in this browser.', 'bad'); route(); return; }
@@ -937,7 +937,7 @@
         case 'result': S.recordResult(projectId, me.id, fd.get('result')); notify('Result saved.'); break;
         case 'industry-followup': S.recommendIndustry(projectId, me.id, fd.get('note')); notify('Recommended for a long-term industry project; the team, teacher and mentor are notified.'); break;
         case 'places': S.setPlaces(form.dataset.comp, Number(fd.get('places')), me.id); notify('Places updated.'); break;
-        case 'apply-posting': S.apply(projectId, me.id, fd.get('cv'), fd.get('coursework')); notify('Application sent to the alumnus.'); break;
+        case 'apply-posting': S.apply(projectId, me.id, fd.get('cv'), fd.get('coursework')); notify('Application sent to the Old Boy.'); break;
         case 'new-posting': {
           const o = S.post(me.id, { title: fd.get('title').trim(), org: fd.get('org').trim(), description: fd.get('description').trim(), places: Number(fd.get('places')), hours: fd.get('hours').trim(), duration: fd.get('duration').trim(), requirements: fd.get('requirements').trim(), audience: fd.get('audience') || 'all' });
           for (const f of fd.getAll('files')) if (f && f.size) await S.addPostingFile(o.id, f, me.id);

@@ -5,7 +5,7 @@ The working copy in this folder keeps the school's name, crest and the real comm
 members. The public build replaces all of that with a fictional school and fictional
 people, so a public link carries no school branding and no real person's name.
 
-    python3 make-public.py          # writes docs/ (served by GitHub Pages)
+    python3 make-public.py          # writes public-build/
 """
 import pathlib
 import re
@@ -13,7 +13,7 @@ import shutil
 import sys
 
 SRC = pathlib.Path(__file__).parent
-OUT = SRC / 'docs'
+OUT = SRC / 'public-build'
 FILES = ['index.html', 'styles.css', 'data.js', 'store.js', 'app.js']
 
 # Ordered: longer phrases first so they are replaced before their parts.
