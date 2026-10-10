@@ -332,3 +332,6 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 button.link { background: none; border: 0; padding: 0; cursor: pointer; }
 /* pdf preview inside the file viewer */
 .filebox-doc { width: 100%; height: min(58vh, 540px); border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+
+/* Account forms retain the existing visual system. */
+.login-pick form{display:grid;gap:18px;margin:26px 0}.login-pick form input{width:100%}.panel>form[data-form="password"],.panel>form[data-form="account-manage"]{display:grid;gap:18px;max-width:640px}fieldset{border:1px solid #ddd;padding:18px;margin:12px 0}fieldset .check{display:block;margin:8px 0}.files li details{width:100%}.files li:has(details){flex-wrap:wrap}details.panel>summary{cursor:pointer;font-weight:600;padding:8px 0}

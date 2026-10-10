@@ -20,7 +20,10 @@ window.RCP = window.RCP || {};
     try {
       const raw = safe.getItem(KEY);
       const parsed = raw ? JSON.parse(raw) : null;
-      if (parsed && parsed.version === RCP.SEED_VERSION) return RCP.applyCalendarProposal(RCP.addExamples(parsed));
+      if (parsed && parsed.version === RCP.SEED_VERSION) {
+        if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
+        return RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)));
+      }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
   }
@@ -40,7 +43,7 @@ window.RCP = window.RCP || {};
     comp: (id) => db.competitions.find((c) => c.id === id),
     project: (id) => db.projects.find((p) => p.id === id),
     posting: (id) => db.postings.find((p) => p.id === id),
-    usersWith: (role) => db.users.filter((u) => u.roles.includes(role)),
+    usersWith: (role) => db.users.filter((u) => u.active !== false && u.roles.includes(role)),
     displayName(id) {
       const u = S.user(id);
       if (!u) return 'Unknown';
@@ -50,15 +53,78 @@ window.RCP = window.RCP || {};
 
   // ---------- session ----------
   S.session = function () {
-    try { return JSON.parse(safe.getItem(SESSION)) || null; } catch (e) { return null; }
+    try {
+      const session = JSON.parse(safe.getItem(SESSION));
+      const user = session && S.user(session.userId);
+      return user && user.active !== false && session.authRevision === user.authRevision && user.roles.includes(session.role) ? session : null;
+    } catch (e) { return null; }
+  };
+  const setSession = (u, role) => safe.setItem(SESSION, JSON.stringify({userId:u.id,role,authRevision:u.authRevision}));
+  const passwordHash = async (password, salt) => {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(salt),iterations:120000,hash:'SHA-256'},key,256);
+    return Array.from(new Uint8Array(bits), x => x.toString(16).padStart(2,'0')).join('');
+  };
+  S.login = async (username, password) => {
+    const u = db.users.find(u => (u.username || u.name).toLowerCase() === username.trim().toLowerCase() && u.active !== false);
+    if (!u || (u.passwordHash ? await passwordHash(password,u.passwordSalt) !== u.passwordHash : password !== u.username)) throw new Error('Incorrect username or password.');
+    setSession(u,u.roles.includes('committee') ? 'committee' : u.roles[0]);
+    return u;
   };
   S.signIn = function (userId, role) {
-    safe.setItem(SESSION, JSON.stringify({ userId, role }));
-    S.log(userId, `signed in as ${role}`);
+    const u = S.me();
+    if (!u || u.id !== userId || !u.roles.includes(role)) throw new Error('Sign in with your username and password first.');
+    setSession(u,role);
   };
   S.signOut = function () { safe.removeItem(SESSION); };
   S.me = function () { const s = S.session(); return s ? S.user(s.userId) : null; };
   S.role = function () { const s = S.session(); return s ? s.role : null; };
+  S.changePassword = async (oldPassword, password) => {
+    const u = S.me();
+    if (!u) throw new Error('Please sign in.');
+    const valid = u.passwordHash ? await passwordHash(oldPassword,u.passwordSalt) === u.passwordHash : oldPassword === u.username;
+    if (!valid) throw new Error('Current password is incorrect.');
+    if (password.length < 12 || password === u.username) throw new Error('Choose a new password of at least 12 characters, different from your username.');
+    u.passwordSalt = Array.from(crypto.getRandomValues(new Uint8Array(16)),x => x.toString(16).padStart(2,'0')).join('');
+    const role = S.role(); u.passwordHash = await passwordHash(password,u.passwordSalt); u.mustChangePassword = false; u.authRevision++;
+    setSession(u,role); save();
+  };
+  const committeeOnly = () => { if (S.role() !== 'committee' || S.me().mustChangePassword) throw new Error('Committee access required.'); };
+  S.manageAccount = data => {
+    committeeOnly();
+    const username = data.username.trim(), roles = data.roles, projectIds = data.projectIds;
+    if (projectIds.some(id => !S.project(id))) throw new Error('Select an existing project.');
+    if (!username || !roles.length || roles.some(r => !['student','teacher','mentor','committee','partner'].includes(r))) throw new Error('Enter a username and at least one valid role.');
+    if (roles.includes('partner') && roles.length !== 1) throw new Error('Partner accounts cannot have internal roles.');
+    if (db.users.some(u => u.id !== data.id && (u.username || u.name).toLowerCase() === username.toLowerCase())) throw new Error('That username already exists.');
+    let u = data.id ? S.user(data.id) : null;
+    if (data.id && (!u || u.id === S.me().id)) throw new Error('Use My account to manage your own password.');
+    if (u && u.roles.includes('committee') && (!data.active || !roles.includes('committee')) && !db.users.some(x => x.id !== u.id && x.active !== false && x.roles.includes('committee'))) throw new Error('Keep at least one active committee account.');
+    if (!u) {u={id:uid('u'),name:username,email:'',username,authRevision:1,mustChangePassword:true};db.users.push(u);}
+    if (u.username !== username && !u.passwordHash) u.mustChangePassword=true;
+    Object.assign(u,{username,name:username,roles,active:data.active,projectIds}); u.authRevision++;
+    for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
+    S.log(S.me().id, 'updated account access for '+username);save();return u;
+  };
+  S.resetPassword = id => {
+    committeeOnly(); const u = S.user(id);
+    if (!u || u.id === S.me().id) throw new Error('Use My account to change your password.');
+    delete u.passwordHash; delete u.passwordSalt; u.mustChangePassword=true;u.authRevision++;
+    for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
+    S.log(S.me().id,'reset the default password for '+u.username);save();
+  };
+  S.canReadFile = id => {
+    const u = S.me(), role = S.role(); if (!u || u.mustChangePassword) return false;
+    const p = db.projects.find(p => p.files.some(f => f.id === id));
+    if (p) return role === 'partner' ? (u.projectIds || []).includes(p.id) && p.files.some(f => f.id === id && (f.partnerIds || []).includes(u.id) && f.category !== 'Experience evidence') : role === 'committee' || p.members.includes(u.id) || p.teacherId === u.id || p.mentorId === u.id;
+    return role !== 'partner' && db.postings.some(o => (o.files || []).some(f => f.id === id));
+  };
+  S.shareFile = (projectId,fileId,ids) => {
+    committeeOnly(); const p = S.project(projectId), f = p && p.files.find(f => f.id === fileId);
+    if (!f || f.category === 'Experience evidence') throw new Error('Experience evidence cannot be shared with partners.');
+    if (ids.some(id => {const u=S.user(id);return !u || u.active === false || !u.roles.includes('partner') || !(u.projectIds || []).includes(projectId);})) throw new Error('Choose active partners assigned to this project.');
+    f.partnerIds=ids; S.log(S.me().id,'updated partner document access for “'+f.name+'”',projectId);save();
+  };
 
   // ---------- audit + mail ----------
   S.log = function (by, text, projectId) {
@@ -389,6 +455,7 @@ window.RCP = window.RCP || {};
     return p;
   };
   S.getFile = async function (id) {
+    if (!S.canReadFile(id)) throw new Error("This document is not shared with your account.");
     const sample = [...db.projects.flatMap(p => p.files), ...db.postings.flatMap(o => o.files || [])].find(f => f.id === id && f.sampleContent !== undefined);
     if (sample) return new Blob([sample.sampleContent], { type: sample.type });
     await idbReady;
@@ -417,6 +484,10 @@ window.RCP = window.RCP || {};
     try { if (idb) idb.close(); indexedDB.deleteDatabase('rcp-files'); } catch (e) { /* ignore */ }
   };
   S.save = save;
+  if (window.addEventListener) window.addEventListener('storage', event => {
+    if (event.key === KEY) db = load();
+    if (event.key === KEY || event.key === SESSION) window.dispatchEvent(new Event('rcp-sync'));
+  });
 
   RCP.store = S;
 })();

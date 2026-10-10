@@ -48,9 +48,10 @@
     student: [['#/', 'My projects'], ['#/apply', 'New application'], ['#/postings', 'Old Boy projects'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
     teacher: [['#/', 'Overview'], ['#/endorse', 'Endorsements'], ['#/propose', 'Propose a project'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
     mentor: [['#/', 'My mentees'], ['#/postings', 'My posted projects'], ['#/postings/new', 'Post a project'], ['#/calendar', 'Calendar']],
-    committee: [['#/', 'Dashboard'], ['#/review', 'Review queue'], ['#/quota', 'Quota tracker'], ['#/eligibility', 'Eligibility'], ['#/register', 'Register'], ['#/calendar', 'Calendar'], ['#/audit', 'Audit log']],
+    partner: [['#/', 'Shared documents']],
+    committee: [['#/', 'Dashboard'], ['#/accounts', 'Accounts'], ['#/review', 'Review queue'], ['#/quota', 'Quota tracker'], ['#/eligibility', 'Eligibility'], ['#/register', 'Register'], ['#/calendar', 'Calendar'], ['#/audit', 'Audit log']],
   };
-  const ROLE_LABEL = { student: 'Student', teacher: 'Teacher', mentor: 'Old Boy mentor', committee: 'Committee' };
+  const ROLE_LABEL = { student: 'Student', teacher: 'Teacher', mentor: 'Old Boy mentor', committee: 'Committee', partner: 'External partner' };
 
   function shell(me, role, route, body) {
     const unread = S.inbox(me, role).filter((m) => !m.read).length;
@@ -61,8 +62,8 @@
     const otherRoles = me.roles.filter((r) => r !== role);
     return html`
       <header class="topbar">
-        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>Proof of concept · demo data · not an official school system</small></span></a>
-        <nav class="nav">${links}<a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
+        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>Browser prototype · Disney & PwC Dark Lab</small></span></a>
+        <nav class="nav">${links}<a href="#/account">My account</a><a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
         <div class="whoami">
           ${avatar(me.id)}
           <div><b>${me.name}</b><small>${ROLE_LABEL[role]}${me.title && role !== 'student' ? ` · ${me.title}` : ''}</small></div>
@@ -72,39 +73,53 @@
       </header>
       ${flash ? html`<div class="flash tone-${flash.tone}" role="status">${flash.msg}</div>` : ''}
       <main class="page">${body}</main>
-      <footer class="foot"><span>Demo data stays in this browser. Notifications appear in Mail.</span><a href="#/demo">Try the demo</a>
+      <footer class="foot"><span>Demo data stays in this browser. Notifications appear in Mail.</span><a href="#/account">My account</a>
         <button class="link" data-act="reset">Reset demo data</button></footer>`;
   }
 
   // ---------- login ----------
   function viewLogin() {
-    const groups = [
-      ['student', 'Students', 'Apply, keep logs, upload files'],
-      ['teacher', 'Teachers', 'Endorse applications, follow projects'],
-      ['mentor', 'Old Boy mentors', 'Post projects, mentor teams'],
-      ['committee', 'Committee', 'Review, match mentors, set quotas'],
-    ];
-    return html`
-      <div class="login">
-        <div class="login-hero">
-          <img src="assets/crest.png" alt="Diocesan Boys' School crest">
-          <h1>Research &amp; Competitions Platform</h1>
-          <p>Research projects and competition entries at Diocesan Boys’ School.</p><p class="poc-note">A proof of concept for the proposed platform. Every person, project and file here is made up, and this is not an official school system.</p>
-          <div class="login-note"><p>Find a project, put forward a proposal or catch up with your team.</p><a href="#/demo">Try the sample workflows <span aria-hidden="true">→</span></a><small>Proof of concept for the 2026–27 school year</small></div>
-        </div>
-        <div class="login-pick">
-          <h2>Choose a demo account</h2>
-          <p class="muted">Select a role, then a person to see their workspace.</p>
-          <div class="role-tabs" aria-label="Account role">${groups.map(([r, title]) => html`<button data-act="login-role" data-role="${r}" aria-pressed="${loginRole === r}" class="${loginRole === r ? 'on' : ''}">${title}</button>`)}</div>
-          ${groups.filter(([r]) => r === loginRole).map(([role, title, blurb]) => html`
-            <section class="login-group">
-              <h3>${title}</h3>
-              <div class="login-users">
-                ${S.usersWith(role).map((u) => html`<button class="login-user" data-act="signin" data-user="${u.id}" data-role="${role}">${avatar(u.id)}<span><b>${u.name}</b><small>${u.form || u.title || ''}${u.sample ? ' · sample' : ''}</small></span></button>`)}
-              </div>
-            </section>`)}
-        </div>
-      </div>`;
+    return html`<div class="login"><div class="login-hero">
+      <img src="assets/crest.png" alt="Diocesan Boys' School crest">
+      <h1>Research &amp; Competitions Platform</h1>
+      <p>Research projects and competition entries at Diocesan Boys’ School.</p>
+      <p class="poc-note">Browser prototype. Account settings and files stay in this browser; real partner access requires a hosted service.</p>
+      <div class="login-note"><p>Disney and PwC Dark Lab R&amp;D projects.</p><small>2026–27 school year</small></div>
+    </div><div class="login-pick"><h2>Sign in</h2><p class="muted">Use your assigned account. Roles are managed by the committee.</p>
+      ${flash ? html`<div class="flash tone-${flash.tone}" role="alert">${flash.msg}</div>` : ''}
+      <form data-form="login"><label class="field"><span>Username</span><input name="username" autocomplete="username" required></label>
+      <label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" maxlength="256" required></label><button class="btn">Sign in</button></form>
+      <p class="small muted">Prototype administrator: <b>Mr. XXX</b>. Default password is the username, including spaces and punctuation. Change it on first sign-in.</p>
+      <p class="small muted">Existing accounts use their displayed name as the username, for example Mr. Cho Ka Wai.</p>
+    </div></div>`;
+  }
+
+  function viewAccount() {
+    const u = S.me();
+    return html`<div class="page-head"><div><h1>${u.mustChangePassword ? 'Change your default password' : 'My account'}</h1><p class="muted">${u.username} · ${u.roles.map(r => ROLE_LABEL[r]).join(', ')}</p></div></div>
+    <section class="panel"><p>${u.mustChangePassword ? 'Set a new password before opening projects or managing accounts.' : 'Change your password here.'}</p>
+    <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form><p class="small muted">At least 12 characters. This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.</p></section>`;
+  }
+  function accountFields(u) {
+    return html`<label class="field"><span>Username / display name</span><input name="username" value="${u ? u.username : ''}" required maxlength="100"></label>
+    <fieldset><legend>Assigned roles</legend>${Object.entries(ROLE_LABEL).map(([r,label]) => html`<label class="check"><input type="checkbox" name="roles" value="${r}" ${u && u.roles.includes(r) ? 'checked' : ''}> ${label}</label>`)}</fieldset>
+    <fieldset><legend>Partner project access</legend>${S.db.projects.map(p => html`<label class="check"><input type="checkbox" name="projectIds" value="${p.id}" ${u && (u.projectIds || []).includes(p.id) ? 'checked' : ''}> ${p.title}</label>`)}</fieldset>
+    <label class="check"><input type="checkbox" name="active" ${!u || u.active !== false ? 'checked' : ''}> Account enabled</label>`;
+  }
+  function viewAccounts() {
+    return html`<div class="page-head"><div><h1>Account management</h1><p class="muted">Assign roles, enable or suspend accounts, and select partner projects.</p></div></div>
+    <div class="callout tone-warn">Prototype accounts apply to this browser only. Default passwords match usernames and must be changed on first sign-in. Do not use this public prototype for confidential partner documents.</div>
+    <section class="panel"><h2>Create account</h2><form data-form="account-manage">${accountFields(null)}<button class="btn">Create account</button></form></section>
+    ${S.db.users.filter(u => u.id !== S.me().id).map(u => html`<details class="panel"><summary>${u.username} · ${u.roles.map(r => ROLE_LABEL[r]).join(', ')} · ${u.active === false ? 'Suspended' : 'Enabled'}</summary><form data-form="account-manage" data-user="${u.id}">${accountFields(u)}<div class="row"><button class="btn">Save access</button><button type="button" class="btn ghost" data-act="account-reset" data-user="${u.id}">Reset to default password</button></div></form></details>`)}`;
+  }
+  function viewPartnerHome(me) {
+    const projects = S.db.projects.filter(p => (me.projectIds || []).includes(p.id));
+    return html`<div class="page-head"><div><h1>Partner documents</h1><p class="muted">Only documents the committee has selected for your account.</p></div></div>${projects.map(p => html`<section class="panel"><h2>${p.partner || p.title}</h2><p>${p.title}</p>${p.files.filter(f => S.canReadFile(f.id)).length ? fileChips(p.files.filter(f => S.canReadFile(f.id))) : empty('No documents have been shared yet.')}</section>`)}${!projects.length ? empty('No projects assigned. Contact the committee.') : ''}`;
+  }
+  function sharingControls(p,f) {
+    if (f.category === 'Experience evidence') return html`<small class="muted">Student evidence · internal only</small>`;
+    const partners = S.usersWith('partner').filter(u => u.active !== false && (u.projectIds || []).includes(p.id));
+    return html`<details><summary class="small">Partner access</summary><form data-form="share-file" data-project="${p.id}" data-file="${f.id}">${partners.map(u => html`<label class="check"><input type="checkbox" name="partners" value="${u.id}" ${(f.partnerIds || []).includes(u.id) ? 'checked' : ''}> ${u.username}</label>`)}${!partners.length ? html`<p class="small muted">Create a partner account and assign this project in Accounts first.</p>` : ''}<p class="small muted">Select approved recipients. Clear all recipients to revoke access.</p><button class="btn small">Save document access</button></form></details>`;
   }
 
   // ---------- shared pieces ----------
@@ -249,7 +264,8 @@
           </ul>
         </section>
       </div>
-      <section class="panel"><h3>Recent activity</h3>${auditList(S.db.audit.slice(0, 8))}<a class="small" href="#/audit">Full audit log →</a></section>`;
+      <section class="panel"><h3>Partner R&amp;D projects</h3><div class="cards">${P.filter(p => ['p-disney','p-pwc'].includes(p.id)).map(p => projectCard(p))}</div></section>
+      <section class="panel"><h3>Recent activity</h3>${auditList(S.db.audit.filter(a => !/^signed in as /i.test(a.text)).slice(0, 8))}<a class="small" href="#/audit">Full audit log →</a></section>`;
   }
 
   // ---------- application wizard (slide 13: step-by-step) ----------
@@ -348,6 +364,7 @@
   function viewProject(me, role, id) {
     const p = S.project(id);
     if (!p) return empty('Project not found.', '#/', 'Back');
+    if (role === 'partner') return viewPartnerHome(me);
     if (!canSee(p, me, role)) return empty('You can only open projects you are part of.', '#/', 'Back');
     const isMember = p.members.includes(me.id);
     const isMentor = p.mentorId === me.id;
@@ -442,7 +459,7 @@
 
           <div class="panel">
             <h3>Files</h3>
-            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span></li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
+            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
             ${isMember || isMentor || role === 'committee' ? html`
               <form data-form="upload" class="upload">
                 <select name="category" aria-label="File type">${RCP.FILE_CATEGORIES.map((c) => html`<option>${c}</option>`)}</select>
@@ -689,7 +706,7 @@
   }
 
   function viewCalendar(me, role) {
-    const all = RCP.CALENDAR_EVENTS;
+    const all = RCP.CALENDAR_EVENTS.filter(e => S.comp(e.comp));
     const events = all.filter(e => calendarCompetition === 'all' || e.comp === calendarCompetition);
     const visible = S.db.projects.filter(p => canSee(p, me, role));
     const logProjects = visible.filter(p => S.logDue(p) && (calendarCompetition === 'all' || p.competitionId === calendarCompetition)).sort((a,b) => S.logDue(a).due - S.logDue(b).due);
@@ -794,9 +811,7 @@
     ['Overdue updates', 'Inspect the domain monitoring project and its overdue update on the teacher overview.', 'cal', 'teacher', '#/project/p-pwc', 'The project shows its next monthly update date (demo policy); posting a new log restarts the interval.'],
   ];
   function viewDemo() {
-    return html`<div class="page-head"><div><h1>Try the demo</h1><p class="muted">Choose an example to open the account and page needed for the task.</p></div><a class="btn ghost" href="#/">Back to workspace</a></div>
-      <div class="demo-intro"><p>These examples use fictional proposals and files. Changes are saved in this browser, so you can switch accounts to follow an application through the process.</p><p class="small muted">Sign-in uses demo accounts and Mail simulates email delivery. Use Reset demo data in the footer to start again.</p></div>
-      <ol class="demo-list">${DEMOS.map(([title, instruction, user, role, href, proof], i) => html`<li><span class="demo-number">${i+1}</span><div><h3>${title}</h3><p>${instruction}</p><p class="small muted"><b>Check:</b> ${proof}</p></div><button class="btn ghost small" data-act="demo-open" data-user="${user}" data-role="${role}" data-href="${href}">Open as ${S.user(user).name}</button></li>`)}</ol>`;
+    return html`<section class="panel"><h1>Using the platform</h1><p>Sign in with your assigned username and password. Committee members can manage accounts and select partner document recipients. Disney and PwC Dark Lab are the two R&amp;D projects; unrelated sample entries have been removed.</p><a class="btn" href="#/">Back</a></section>`;
   }
 
   // ---------- showing a file ----------
@@ -837,11 +852,15 @@
       root.innerHTML = viewLogin().s;
       return;
     }
+    if (me.mustChangePassword) { root.innerHTML = shell(me,role,hash,viewAccount()).s; flash = null; return; }
     const parts = hash.slice(2).split('/');
+    if (role === 'partner' && !['','account','mail'].includes(parts[0])) { root.innerHTML=shell(me,role,hash,viewPartnerHome(me)).s;return; }
     let body;
     const guard = (roles, fn) => (roles.includes(role) ? fn() : empty('This page is for ' + roles.map((r) => ROLE_LABEL[r].toLowerCase()).join(' and ') + ' accounts.', '#/', 'Back'));
     switch (parts[0]) {
-      case '': body = { student: viewStudentHome, teacher: viewTeacherHome, mentor: viewMentorHome, committee: viewCommitteeHome }[role](me); break;
+      case '': body = { student: viewStudentHome, teacher: viewTeacherHome, mentor: viewMentorHome, committee: viewCommitteeHome, partner: viewPartnerHome }[role](me); break;
+      case 'account': body = viewAccount(); break;
+      case 'accounts': body = guard(['committee'],viewAccounts); break;
       case 'apply': body = guard(['student'], () => viewApply(me, parts[1])); break;
       case 'project': body = viewProject(me, role, parts[1]); break;
       case 'endorse': body = guard(['teacher'], () => {
@@ -912,8 +931,8 @@
     if (act === 'calendar-mode') { calendarMode = el.dataset.mode; route(); }
     else if (act === 'calendar-open') { calendarMode = 'agenda'; route(); const target = document.getElementById('calendar-' + el.dataset.event); if(target) {target.open = true; target.scrollIntoView({block:'start'});} }
     else if (act === 'login-role') { loginRole = el.dataset.role; route(); }
-    else if (act === 'demo-open') { S.signIn(el.dataset.user, el.dataset.role); wizard = null; location.hash = el.dataset.href; route(); }
-    else if (act === 'signin') { S.signIn(el.dataset.user, el.dataset.role); wizard = null; location.hash = '#/'; route(); }
+    else if (act === 'demo-open') { location.hash = '#/'; route(); }
+    else if (act === 'account-reset') { if (el.dataset.armed !== '1') {el.dataset.armed='1';el.textContent='Confirm password reset';return;} try {S.resetPassword(el.dataset.user);notify('Default password restored; change required at next sign-in.');} catch(err){notify(err.message,'bad');} route(); }
     else if (act === 'signout') { S.signOut(); wizard = null; location.hash = '#/'; route(); }
     else if (act === 'reset') {
       if (el.dataset.armed !== '1') { el.dataset.armed = '1'; el.textContent = 'Reset — click again to confirm'; setTimeout(() => { el.dataset.armed = '0'; el.textContent = 'Reset demo data'; }, 5000); return; }
@@ -927,7 +946,7 @@
     else if (act === 'csv') {
       await showBlob('dbs-research-competitions-register.csv', new Blob([S.exportCsv()], { type: 'text/csv' }));
     } else if (act === 'download') {
-      const blob = await S.getFile(el.dataset.file);
+      let blob; try {blob = await S.getFile(el.dataset.file);} catch(err) {notify(err.message,'bad');route();return;}
       if (!blob) { notify('That file is no longer stored in this browser.', 'bad'); route(); return; }
       const meta = [...S.db.projects.flatMap((p) => p.files), ...S.db.postings.flatMap((o) => o.files || [])].find((f) => f.id === el.dataset.file);
       await showBlob(meta ? meta.name : 'file', blob);
@@ -971,6 +990,11 @@
     const projectId = form.dataset.project || location.hash.split('/')[2];
     try {
       switch (form.dataset.form) {
+        case 'login': await S.login(fd.get('username'),fd.get('password')); wizard=null;location.hash='#/';route();return;
+        case 'password': if(fd.get('password') !== fd.get('confirm')) throw new Error('Passwords do not match.');await S.changePassword(fd.get('current'),fd.get('password'));notify('Password updated.');location.hash='#/';route();return;
+        case 'account-manage': S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active')});notify('Account access saved. New accounts use their username as the default password.');break;
+        case 'share-file': S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
+
         case 'wizard': {
           readWizard(form);
           if (wizard.step === 4 && !wizard.teacherId) throw new Error('Choose a teacher to endorse this application.');
@@ -1024,5 +1048,6 @@
   });
 
   window.addEventListener('hashchange', route);
+  window.addEventListener('rcp-sync', route);
   route();
 })();

@@ -429,3 +429,41 @@ RCP.applyCalendarProposal = function(db) {
   db.calendarRevision = 1;
   return db;
 };
+
+// Remove only known seeded examples; preserve projects and files users created.
+(() => {
+  const originalSeed = RCP.seed;
+  const legacy = originalSeed();
+  const sampleProjects = new Set(legacy.projects.filter(p => !['p-disney','p-pwc'].includes(p.id)).map(p => p.id));
+  const samplePostings = new Set(legacy.postings.map(p => p.id));
+  const sampleMail = new Set(legacy.mail.map(m => m.id));
+  const sampleAudit = new Set(legacy.audit.map(a => a.text));
+  RCP.cleanPilot = db => {
+    if (db.pilotRevision === 1) return db;
+    db.projects = db.projects.filter(p => !sampleProjects.has(p.id));
+    db.postings = db.postings.filter(p => !samplePostings.has(p.id));
+    db.mail = db.mail.filter(m => !sampleMail.has(m.id));
+    db.audit = db.audit.filter(a => !sampleAudit.has(a.text) && !/^signed in as /i.test(a.text));
+    db.customDates = (db.customDates || []).filter(d => !sampleProjects.has(d.projectId));
+    db.competitions = db.competitions.filter(c => c.id !== 'other' || db.projects.some(p => p.competitionId === 'other'));
+    db.competitions.forEach(c => { if(c.places === legacy.competitions.find(x => x.id === c.id)?.places) c.places = null; });
+
+    for (const p of db.projects.filter(p => ['p-disney','p-pwc'].includes(p.id))) {
+      const seed = legacy.projects.find(x => x.id === p.id);
+      p.partner = p.id === 'p-disney' ? 'Disney · Hong Kong Disneyland' : 'PwC Dark Lab';
+      p.logs = p.logs.filter(l => !seed.logs.some(x => x.id === l.id));
+      p.files = p.files.filter(f => f.sampleContent === undefined);
+      if(p.experience === seed.experience) p.experience = '';
+      if(p.industryTutor === seed.industryTutor) p.industryTutor = null;
+      if (p.decision && p.decision.note === seed.decision.note) { p.decision = null; p.endorsement = null; p.status = 'draft'; p.mentorId = null; p.teacherId = null; p.checklist = Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, false])); }
+      if (p.id === 'p-pwc') p.members = p.members.filter(id => !['aaron','owen'].includes(id));
+    }
+    const used = new Set(db.projects.flatMap(p => [...p.members,p.teacherId,p.mentorId]).filter(Boolean));
+    db.users = db.users.filter(u => (!u.sample && !['ethan','marcus','ryan','aaron','owen','kho'].includes(u.id)) || used.has(u.id));
+    if (!db.users.some(u => u.id === 'pilot-admin')) db.users.push({id:'pilot-admin',name:'Mr. XXX',roles:['committee'],title:'Prototype administrator',email:''});
+    db.users.forEach(u => { u.username ||= u.name; u.active = u.active !== false; u.mustChangePassword = true; u.authRevision = 1; });
+    db.pilotRevision = 1;
+    return db;
+  };
+  RCP.seed = () => RCP.cleanPilot(originalSeed());
+})();
