@@ -1,2 +1,5 @@
 .DS_Store
+.pilot-data/
+__pycache__/
+*.pyc
 public-build/
