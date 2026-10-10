@@ -1,62 +1,115 @@
-# DBS R&D partner pilot
+# DBS Research & Competitions Platform: prototype
 
-A focused pilot for **Disney** and **PwC Dark Lab**. Replaces the role-picker demo and fabricated competition entries. Existing prototype history is retained in Git, but its seeded people, documents, progress and approvals are not migrated into the pilot.
+The working prototype of the platform proposed in **CMS Proposal v3** (September 2026): one school platform for Stage 1 industry projects and Stage 2 research competitions, run with PRISM (DBS Robotics) and the DSOBA.
 
-## What is ready
+## Open it
 
-- Two workspaces, with no fictional participants, documents or progress.
-- Invitation-only accounts: committee, project team, external partner. Roles are assigned at invitation time; participants cannot choose or change their role.
-- Committee account management: workspace assignment, suspension and session revocation. Saving account access also clears prior document grants, requiring a fresh sharing decision.
-- Internal uploads, committee approval and sharing with **specific named partner accounts**. The server checks both workspace membership and document grants for every listing and download. Revoke access by clearing recipients or suspending the account; downloaded copies cannot be recalled.
-- Internal team updates and committee-published partner updates.
-- Persistent pilot feedback, ratings and review status.
-- Recent activity records project actions, access changes and feedback; sign-ins are excluded.
+- Double-click **`index.html`**, or
+- double-click **`Open Platform.command`** (serves it on `http://127.0.0.1:4180` and opens the browser; press Ctrl+C in the Terminal window to stop).
 
-## Local launch
+No install and no internet needed (fonts fall back to system fonts offline). Everything is saved in this browser — opening `index.html` directly works, but data then lasts for the session only; served via `Open Platform.command` it persists between visits. **Reset demo data** in the footer restores the sample data.
 
-Requires Python 3.10 or later; no packages required.
+## What the deck promised, and where it is
 
-```sh
-python3 server.py --create-admin
-python3 server.py
-```
+| Deck | In the prototype |
+|---|---|
+| **Separate logins**: students, teachers, mentors, committee (slide 13) | Sign-in page grouped by role. People with two roles (e.g. committee students, DSOBA mentors) switch role from the top bar |
+| **Step-by-step applications, teacher emailed to endorse** (slide 13) | *New application*: a 6-step wizard (Track → Project → Team → Experience → Endorsement → Review), saved as a draft each step. The Experience step takes evidence attachments (CV, certificates, portfolio). Submitting "emails" the chosen teacher, who endorses or returns it with comments |
+| **Teachers-in-charge** (slide 13) | The TIC dashboard: every application awaiting their endorsement in one place — proposal, experience and evidence inline, endorse or return without leaving the page — plus the progress of every project they oversee |
+| **File storage**: proposals, logs, presentations (slide 13) | Upload and download on every project page; files can be attached to progress logs and to the Experience step of an application. Stored in the browser's IndexedDB |
+| **Quota tracker**: places settled before deadlines (slide 13) | *Quota tracker*: places per competition, taken vs pending, days to deadline, and the committee sets the places. Approval is blocked once a competition is full, which ends first come, first served |
+| **Accountability**: proposal → endorsement → experience → decision → mentor → logs → final → result (slide 11) | The 8-step tracker at the top of each project page, filled in by the real workflow |
+| **Prototype: a student's project page** (slide 11) | `#/project/…`: proposal, people, decisions, log timeline with mentor feedback, files, final submission, result |
+| **Stage 1, student-initiated**: proposal → committee review → matching TICs and Old Boys → regular updates (slide 9) | Wizard → endorsement → *Review queue* (assign mentor on approval) → monthly logs with overdue flags |
+| **Stage 1, Old Boy-initiated**: project posted → students apply with CV and coursework → committee eligibility check → check-ins every 2 months (slide 9) | Mentors *Post a project*; students apply; the mentor shortlists; the committee confirms eligibility and names a TIC on *Eligibility*, which creates the project with a 2-month check-in cadence |
+| **Teacher-initiated projects** | Teachers-in-charge can *Propose a project* (nav) — it skips endorsement and goes straight to the committee to ratify, then runs like any other project. Example seeded: *Acoustic levitation bench* (WCY) |
+| **Targeted recruitment** | Postings carry a target audience (All students / G9–G10 / G11–G12): students only see postings aimed at their year level, and restricted ones are labelled |
+| **Stage 2**: apply → review → DSOBA match → monitor → grow (slide 10) | Competition applications share the same pipeline; the committee assigns an Old Boy mentor and monitors logs |
+| **Monitor / Document** aims (slide 4) | *Register* (every entry, exportable as CSV), *Audit log* (every action), committee *Dashboard* (awaiting decisions, overdue logs, closing deadlines) |
+| Competition list and calendar (slides 6–8) | *Competitions* grouped by tier, sorted by deadline, with days-left and places on each card; *Calendar 2026–27* as a real month-by-month calendar with deadline days marked |
 
-Create the first committee account using the interactive prompt, then open `http://localhost:4180`. Passwords are entered without terminal echo. Default development origin is exactly `http://localhost:4180`; use that hostname, not `127.0.0.1`.
+"Emails" appear in each person's **Mail** tab with a button that opens the right page, so the workflow can be demonstrated end to end.
 
-Passwords use salted PBKDF2-SHA256 (600,000 iterations). Sessions use random tokens stored as hashes, HttpOnly cookies, eight-hour expiry, origin and CSRF checks. HTTPS deployments add Secure cookies. Accounts and files live in `.pilot-data/`, which is ignored by Git and cannot be served as static files. Do not upload private documents into `docs/`, the repository or GitHub Pages.
+## Updated proof of concept (30 September 2026)
 
-An administrator can reset a password interactively:
+The school colours and typography are retained. The sign-in page now groups accounts behind role tabs, project lists use rows, and copy describes the task directly. Tables scroll within their panel on small screens.
 
-```sh
-python3 server.py --reset-password
-```
+Use **Try the sample workflows** on the sign-in page or **Try the demo** in the footer. The walkthrough contains 18 examples with account shortcuts, actions to try and observable outcomes. It covers applications, endorsement and returns, committee approval and rejection, mentor matching, full quotas, uploads, logs, feedback, final submission, results, recruitment, year-level targeting, teacher proposals, calendar dates, Mail, audit and CSV export.
 
-This revokes the account's existing sessions. Invitation acceptance uses an exact email match and a one-time seven-day link. Send invitations directly to the named recipients through an agreed private channel. The app does not send emails automatically. There is no public registration or demo impersonation.
+Ten additional sample projects include a returned solar proposal, a declined recycling sorter, an active pond logger, a submitted vibration monitor, a completed microplastics project and a Geneva entry waiting behind two occupied places. Sample proposals, CV evidence, measurements, final reports and a posting brief are real downloadable text or CSV files. New examples merge once into version-5 browser data without replacing existing work; **Reset demo data** recreates the sample state after confirmation.
 
-## Deployment
+The prototype was checked in an isolated Chromium browser on desktop and at 390px width. All 26 checks passed, including attachment retrieval after reload, quota enforcement, duplicate/capacity guards for recruitment, CSV content, notifications, audit entries, migration and reset. Sign-in and email delivery are simulated; the checks establish local prototype behaviour, not production integration.
 
-**GitHub Pages is the public, read-only preview.** It cannot run the authentication/database/file server. No account actions or feedback submission are enabled in that preview. The live pilot must serve this same interface and API together on an HTTPS host, not put private data in GitHub Pages or localStorage.
+## Try this demo path (about 3 minutes)
 
-The supplied Dockerfile and `render.yaml` prepare deployment on Render with a persistent disk. Provisioning hosting and its paid disk requires the hosting account owner. Set `PILOT_ORIGIN` to the exact deployment URL, e.g. `https://your-pilot.onrender.com` (no trailing slash). The server uses the host's `PORT`. Set `PILOT_DATA_DIR` to the mounted private storage path. Run `python server.py --create-admin` through the deployment's private shell to bootstrap the committee account. No default passwords or real invitations are included.
+1. Sign in as **Ethan Lau** (student) → *New application* → ISEF → fill the steps (attach a CV on *Experience*) → choose **Ms. Chan Sze Man** → Submit.
+2. Sign out → **Ms. Chan Sze Man** (teacher) → her dashboard shows Ethan's application inline; open the attached CV, then *Endorse*.
+3. Sign out → **Mr. Cho Ka Wai** (committee) → *Review queue* → open it → assign mentor **Austin** → Approve. The ISEF quota bar on the dashboard moves.
+4. Sign out → **Ethan Lau** → open the project → post a progress log with a file (monthly documentation is the Stage 2 demo policy; the next-log countdown restarts) → *Mark final submission done* → record a result. All 8 accountability steps turn gold.
+5. Try **David** (mentor) → *My posted projects* → shortlist Ryan → **Isaac** (committee) → *Eligibility* → confirm.
+6. Compare **Ryan Ng** (9B) and **Aaron Tsang** (12IB) under *Old Boy projects*: Aaron sees the senior-only carbon dashboard posting, Ryan sees the junior robotics one. Postings can also carry attached briefs.
+7. Try **Mr. Wan Chi Yin** (teacher) → his dashboard has the teacher-initiated *Acoustic levitation bench* (log overdue) and *Propose a project* to start a new one.
 
-The disk and SQLite are suitable for a small, single-instance pilot. Keep one instance, back up the entire private data directory together (database and files), and test restore before storing important work. For broader rollout, add managed identity/SSO, email verification/delivery, organisation-approved retention and backups, and a managed database/object store. Partners should only receive documents the project owner has approved for sharing.
+## Data
 
-## Soft-launch checklist
+Committee members, competitions and their dates come from the deck; per the deck, dates follow the 2025–26 cycle unless a 2027 date is shown. Competition **place numbers are placeholders** for the committee to set. Teachers-in-charge are named as on the DBS staff list (dbs.edu.hk), with sample departments; their students, the Old Boy mentors and all proposals are fictional. The Disneyland and PwC projects mirror PRISM's current work so the pilot looks realistic. The seed data intentionally includes a **student-initiated** (schlieren, rain-aware routes), a **teacher-initiated** (acoustic levitation) and an **Old Boy-initiated** (vision, carbon, robotics) example, plus a shortlisted applicant, so every page has something to show.
 
-1. Deploy the secure server and create the committee account.
-2. Confirm the Disney and PwC Dark Lab project briefs with the teams. Current titles are workspace labels based on the prior project context, not confirmed milestones or approvals.
-3. Invite one DBS project lead and one named contact from each partner. Assign each partner only its own workspace.
-4. Upload one approved brief per workspace, then use **Manage access** to share it with that partner.
-5. Ask participants to sign in, open the brief, read an update and submit feedback using the form. Suggested prompt: “Please try the workspace and tell us what was confusing, what was useful, and what would make it easier to collaborate.”
-6. Review feedback before inviting more people. Invitations have not been sent: real contact emails and the hosting deployment are still required.
+## October 2026 update
 
-## Verification
+- **Sample documents are PDFs.** Proposals, final reports, CVs and briefs are generated as real PDF files in the browser (no library); CSV data stays CSV. PDFs open in the built-in viewer and download properly.
+- **Quota tracker has a search bar**, and the **Register has search plus sort** (project, track, status, teacher, mentor, log count). Both filter and sort the table instantly without a page reload.
+- **Calendar opens on the month view**, and every visible project marks its **next update due date** on the grid, alongside competition milestones.
+- **Custom deadlines**: the mentor or teacher-in-charge of a project can add and remove deadlines for their own project (title + date) from the project page. They appear on the calendar, notify the team in Mail, and write to the audit log.
 
-```sh
-python3 -m unittest discover -s tests -v
-node --check app.js
-```
+## From prototype to production
 
-Integration checks cover invitation email matching and replay rejection, login/logout, CSRF/origin rejection, unauthenticated access, partner separation, private document listing/download, approval/revocation, forced internal team updates, feedback, account suspension, excluded sign-ins and blocked private static paths.
+- **Sign-in:** school Google Workspace SSO restricted to DBS domains for students and staff; invited accounts (or DSOBA SSO) for Old Boys. Roles are assigned by an admin, never self-selected.
+- **Server and database:** move the store to a server (e.g. Postgres, or Firebase/Supabase for a small team), with access checks on the server, not in the page.
+- **Real email:** the school's mail service for endorsement links (signed, expiring links for teachers).
+- **Files:** school Google Drive or cloud storage with per-project folders (the deck mentions "kept on drive").
+- **Privacy:** students' CVs and logs are personal data (PDPO). Limit who sees them, set a retention period, and get consent from Old Boy mentors for sharing company material.
 
-`docs/` is the GitHub Pages publish directory. Keep `index.html`, `app.js`, `styles.css` and `assets/` in sync with the root interface. Legacy localStorage is left untouched but is no longer read or displayed.
+## Calendar checked against the supplied deck
+
+The calendar now includes 18 competition milestones from slides 6–8, with exact days only where given in the deck. Samsung registration (3 September–16 October) and proposal submission (20 November) are separate milestones. Judging, exhibitions, workshops and finals appear as dated events or month windows. GTC registration has no closing date in the deck; Geneva selection is November–December; HKSSPC nominations are December–January. The former guessed dates for these events have been removed from the calendar, competition list and quota tracker.
+
+Each milestone has a suggested preparation checklist based on the platform workflow in slides 11 and 13. Ticks persist per demo account and do not grant approval or submit to an organiser. The deck does not give organiser-specific forms, file formats, submission times or lead times; these must be confirmed. Dates without a year are projected onto the prototype's 2026–27 planning year and are labelled accordingly.
+
+The calendar also lists project updates due for the signed-in account (all active projects for the committee). Slide 9 specifies monthly updates for student-led industry projects and check-ins every two months for Old Boy projects. Teacher-led and Stage 2 projects use a labelled monthly demo policy because the deck specifies no interval for them. Posting a new log restarts the appropriate interval, including for backdated log dates.
+
+## Coverage of the proposal's routes (October 2026)
+
+The demo data now shows every route in the proposal, so each one can be opened and compared:
+
+- **Student-initiated Stage 1** — proposal, teacher endorsement, committee decision, monthly updates.
+- **Old Boy-initiated Stage 1** — the Old Boy posts the problem, students apply with a CV, the
+  committee confirms eligibility and names a TIC, then check-ins every two months.
+- **Teacher-initiated** — the teacher proposes it and the committee ratifies it, with no endorsement step.
+
+Austin, Isaac and David each have **one project they posted themselves and one student-initiated
+project they mentor**, so the two processes sit side by side on one account. Every teacher has an
+application waiting to endorse; every applicant state (pending, shortlisted, placed, declined,
+ineligible) and every project status appears; Geneva is full, so the quota block can be shown; one
+project has an overdue log; and there is now an example file of every type, including Presentation.
+
+Two functions from the deliverables were missing and have been added:
+
+- **Duplicate applications are blocked** — a student with a live entry in a competition cannot
+  submit a second one; the message names the existing entry and its status.
+- **Stage 2, step 5** — on a finished entry the committee can *Recommend for Stage 1*, which records
+  it on the project and notifies the team, teacher and mentor.
+
+There is no checks page in the product. The 36 automated checks live outside this folder as a test
+harness that is injected at run time; the last run passed 36/36 on both this copy and the public one.
+
+
+## Public copy
+
+`python3 make-public.py` writes `public-build/`: the same prototype with the school name, crest,
+alumni association, partner companies and every real person replaced by fictional ones. The script
+fails if any identifying term survives. That build is published at
+
+**https://gutentag-cloud.github.io/research-competitions-platform/**
+
+from the public repo `gutentag-cloud/research-competitions-platform`. This folder keeps the real
+names and branding for school use; regenerate and push the public build after changing anything here.
