@@ -467,3 +467,33 @@ RCP.applyCalendarProposal = function(db) {
   };
   RCP.seed = () => RCP.cleanPilot(originalSeed());
 })();
+
+// High-level workstreams from the supplied Disney Software folder.
+// Embedded documents below are synthetic trials, not original operational files.
+(() => {
+  const seed = RCP.seed;
+  RCP.addDisneyWorkspaces = db => {
+    for (const u of db.users) if (u.roles.includes('student') && u.roles.length > 1) {u.roles=['student'];u.authRevision=(u.authRevision || 1)+1;}
+    if(db.disneyWorkspaceRevision === 1)return db;
+    const base = db.projects.find(p=>p.id==='p-disney');
+    const now=new Date().toISOString();
+    const scopes=[
+      ['p-disney','Railway LiDAR intrusion detection','Software/RPi5/README.md','Vertical LiDAR scans are transformed into a clearance-envelope frame to identify intrusions. The software supports replay testing, GPS tagging, local event logs and optional notifications. Field calibration and railway safety validation remain necessary.'],
+      ['p-disney-camera','Railway camera detection','Software/Camera Detection/README.md','Camera frames feed a detection model for rail-related objects. The development workflow covers dataset preparation, training, replay and accelerator export. The supplied source notes that the dataset needs expansion and validation before accuracy claims can be trusted.'],
+      ['p-disney-sensors','Railway sensor and gauge integration','Software/RPi5/SYSTEM_CONSOLE.md','Integration work covers the independent D6 LiDAR stream, paired gauge measurements, sensor freshness and camera timing. The source identifies unresolved gauge conversion, mounting calibration and hardware checks; raised or missing screw detection is not yet implemented.'],
+      ['p-disney-console','Railway system console and evidence','Software/RPi5/SYSTEM_CONSOLE.md','A shared console brings together cameras, LiDAR, gauges, GPS, event history and system health. Recorded and synthetic previews must be distinguished from live hardware. The source describes bounded camera history and saved-frame integrity checks, with physical timing checks still required.']
+    ];
+    for(const [id,title,source,abstract] of scopes){
+      let p=db.projects.find(p=>p.id===id);
+      if(!p){p={id,stage:1,origin:'student',competitionId:null,partner:'Disney · Hong Kong Disneyland',members:['jaden','trevor'],teacherId:null,mentorId:null,industryTutor:null,experience:'',status:'draft',createdAt:now,endorsement:null,decision:null,checklist:Object.fromEntries(RCP.ACCOUNTABILITY.map(([k])=>[k,false])),logs:[],files:[]};db.projects.push(p);}
+      p.title=title;p.abstract=abstract;p.sourceReference=source;p.membershipLocked=true;p.workspaceImported=true;p.members=['jaden','trevor'];p.createdAt=now;
+      const trials=[
+        ['readme',id+'-trial-readme.txt','Proposal','text/plain','TRIAL FILE — SYNTHETIC WORKFLOW CHECK\n\nWorkspace: '+title+'\nPurpose: test login, participant-only access and document downloads.\nParticipants: Jaden Wong and Trevor Chak.\nThis file contains no railway drawings, credentials, field measurements or approval.\nSource reference for the workspace summary: '+source+'\n'],
+        ['checklist',id+'-trial-checklist.csv','Progress log','text/csv','check,expected_result,data_origin\nparticipant_login,own_workspace_visible,synthetic_trial\nnonparticipant_login,workspace_not_available,synthetic_trial\ndocument_download,assigned_participants_only,synthetic_trial\n']
+      ];
+      for(const [suffix,name,category,type,content] of trials)if(!p.files.some(f=>f.id===id+'-trial-'+suffix))p.files.push({id:id+'-trial-'+suffix,name,category,type,size:new TextEncoder().encode(content).length,by:'pilot-admin',at:now,sampleContent:content,trial:true,partnerIds:[]});
+    }
+    db.disneyWorkspaceRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.addDisneyWorkspaces(seed());
+})();

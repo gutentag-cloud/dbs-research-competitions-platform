@@ -22,7 +22,7 @@ window.RCP = window.RCP || {};
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) {
         if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
-        return RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)));
+        return RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed))));
       }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
@@ -68,12 +68,12 @@ window.RCP = window.RCP || {};
   S.login = async (username, password) => {
     const u = db.users.find(u => (u.username || u.name).toLowerCase() === username.trim().toLowerCase() && u.active !== false);
     if (!u || (u.passwordHash ? await passwordHash(password,u.passwordSalt) !== u.passwordHash : password !== u.username)) throw new Error('Incorrect username or password.');
-    setSession(u,u.roles.includes('committee') ? 'committee' : u.roles[0]);
+    setSession(u,u.roles.includes('student') ? 'student' : u.roles.includes('committee') ? 'committee' : u.roles[0]);
     return u;
   };
   S.signIn = function (userId, role) {
     const u = S.me();
-    if (!u || u.id !== userId || !u.roles.includes(role)) throw new Error('Sign in with your username and password first.');
+    if (!u || u.id !== userId || !u.roles.includes(role) || u.roles.includes('student') && role !== 'student') throw new Error('Sign in with your username and password first.');
     setSession(u,role);
   };
   S.signOut = function () { safe.removeItem(SESSION); };
@@ -89,12 +89,13 @@ window.RCP = window.RCP || {};
     const role = S.role(); u.passwordHash = await passwordHash(password,u.passwordSalt); u.mustChangePassword = false; u.authRevision++;
     setSession(u,role); save();
   };
-  const committeeOnly = () => { if (S.role() !== 'committee' || S.me().mustChangePassword) throw new Error('Committee access required.'); };
+  const committeeOnly = () => { if (S.role() !== 'committee' || S.me().roles.includes('student') || S.me().mustChangePassword) throw new Error('Committee access required.'); };
   S.manageAccount = data => {
     committeeOnly();
     const username = data.username.trim(), roles = data.roles, projectIds = data.projectIds;
     if (projectIds.some(id => !S.project(id))) throw new Error('Select an existing project.');
     if (!username || !roles.length || roles.some(r => !['student','teacher','mentor','committee','partner'].includes(r))) throw new Error('Enter a username and at least one valid role.');
+    if (roles.includes('student') && roles.length !== 1) throw new Error('Use a separate staff account for internal committee roles.');
     if (roles.includes('partner') && roles.length !== 1) throw new Error('Partner accounts cannot have internal roles.');
     if (db.users.some(u => u.id !== data.id && (u.username || u.name).toLowerCase() === username.toLowerCase())) throw new Error('That username already exists.');
     let u = data.id ? S.user(data.id) : null;
@@ -113,10 +114,16 @@ window.RCP = window.RCP || {};
     for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
     S.log(S.me().id,'reset the default password for '+u.username);save();
   };
+  S.canSeeProject = (p, user=S.me(), role=S.role()) => !!(p && user && (user.roles.includes('student') ? p.members.includes(user.id) : role === 'committee' || p.members.includes(user.id) || p.teacherId === user.id || p.mentorId === user.id || role === 'partner' && (user.projectIds || []).includes(p.id)));
+  S.setProjectMembers = (projectId, ids) => {
+    committeeOnly();const p=S.project(projectId);
+    if(!p || ids.some(id => !S.user(id)?.roles.includes('student') || S.user(id).active === false)) throw new Error('Select active student accounts.');
+    p.members=[...new Set(ids)];p.membershipLocked=true;S.log(S.me().id,'updated participants for “'+p.title+'”',projectId);save();
+  };
   S.canReadFile = id => {
     const u = S.me(), role = S.role(); if (!u || u.mustChangePassword) return false;
     const p = db.projects.find(p => p.files.some(f => f.id === id));
-    if (p) return role === 'partner' ? (u.projectIds || []).includes(p.id) && p.files.some(f => f.id === id && (f.partnerIds || []).includes(u.id) && f.category !== 'Experience evidence') : role === 'committee' || p.members.includes(u.id) || p.teacherId === u.id || p.mentorId === u.id;
+    if (p) return S.canSeeProject(p,u,role) && (role === 'partner' ? (u.projectIds || []).includes(p.id) && p.files.some(f => f.id === id && (f.partnerIds || []).includes(u.id) && f.category !== 'Experience evidence') : role === 'committee' || p.members.includes(u.id) || p.teacherId === u.id || p.mentorId === u.id);
     return role !== 'partner' && db.postings.some(o => (o.files || []).some(f => f.id === id));
   };
   S.shareFile = (projectId,fileId,ids) => {
@@ -214,6 +221,7 @@ window.RCP = window.RCP || {};
       p = { id: uid('p'), status: 'draft', createdAt: nowIso(), endorsement: null, decision: null, mentorId: null, logs: [], files: [], checklist: Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, false])) };
       db.projects.unshift(p);
     }
+    if (p.membershipLocked && JSON.stringify([...draft.members].sort()) !== JSON.stringify([...p.members].sort())) throw new Error('Only the committee can change participants for this project.');
     Object.assign(p, {
       stage: draft.stage, origin: draft.origin || 'student', title: draft.title.trim(), abstract: draft.abstract.trim(),
       competitionId: draft.stage === 2 ? draft.competitionId : null, partner: draft.stage === 1 ? draft.partner.trim() : null,
@@ -299,6 +307,7 @@ window.RCP = window.RCP || {};
 
   S.addLog = function (id, by, date, text, fileIds) {
     const p = S.project(id);
+    if (!S.canSeeProject(p) || S.role() === 'partner' || by !== S.me().id) throw new Error('Project access required.');
     p.logs.push({ id: uid('l'), date, by, at: nowIso(), text: text.trim(), files: fileIds || [], comments: [] });
     p.logs.sort((a, b) => a.date.localeCompare(b.date) || a.at.localeCompare(b.at));
     p.checklist.logs = true;
@@ -422,6 +431,7 @@ window.RCP = window.RCP || {};
   };
 
   S.addFile = async function (projectId, file, category, by) {
+    if (!S.canSeeProject(S.project(projectId)) || S.role() === 'partner' || by !== S.me().id) throw new Error('Only the assigned project team can upload files.');
     const id = await putBlob(file);
     const p = S.project(projectId);
     p.files.push({ id, name: file.name, size: file.size, type: file.type, category, by, at: nowIso() });
@@ -489,5 +499,25 @@ window.RCP = window.RCP || {};
     if (event.key === KEY || event.key === SESSION) window.dispatchEvent(new Event('rcp-sync'));
   });
 
+  // Connect to the private service when this interface is served by server.cjs.
+  let remoteSession=null, csrf='';
+  const request = async (endpoint,body) => {
+    const response=await fetch('/api/'+endpoint,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{},body:body?JSON.stringify(body):undefined});
+    const result=await response.json();if(response.status===401){remoteSession=null;db=RCP.seed();}if(!response.ok)throw new Error(result.error || 'Request failed.');return result;
+  };
+  const applyRemote=result=>{if(result.db)db=result.db;if('session' in result)remoteSession=result.session;if(result.csrf)csrf=result.csrf;};
+  S.isRemote=()=>false;
+  S.ready=(async()=>{
+    if(typeof fetch === 'undefined')return;
+    try {const response=await fetch('/api/session',{credentials:'same-origin'});if(!response.ok || !(response.headers.get('content-type') || '').includes('application/json'))return;const initial=await response.json();if(!('session' in initial))return;applyRemote(initial);}catch(error){return;}
+    S.isRemote=()=>true;S.session=()=>remoteSession;S.me=()=>remoteSession?S.user(remoteSession.userId):null;S.role=()=>remoteSession?.role || null;S.storesFilesDurably=()=>true;
+    S.login=async(username,password)=>{const result=await request('login',{username,password});applyRemote(result);return S.me();};
+    S.signOut=async()=>{await request('logout',{});remoteSession=null;db=RCP.seed();};
+    const methods=['changePassword','signIn','manageAccount','resetPassword','setProjectMembers','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
+    for(const method of methods) S[method]=async(...args)=>{const result=await request('action',{method,args});applyRemote(result);return result.result?.id ? (S.project(result.result.id)||S.posting(result.result.id)||S.user(result.result.id)||result.result) : result.result;};
+    for(const method of ['addFile','addPostingFile']) S[method]=async(...args)=>{const f=args[1],bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));args[1]={name:f.name,type:f.type,content:btoa(binary)};const result=await request('action',{method,args});applyRemote(result);return result.result;};
+    S.getFile=async id=>{const response=await fetch('/api/files/'+encodeURIComponent(id),{credentials:'same-origin'});if(!response.ok)throw new Error('File unavailable for your account.');const f=db.projects.flatMap(p=>p.files).find(f=>f.id===id);return new Blob([await response.arrayBuffer()],{type:f?.type || 'application/octet-stream'});};
+    S.reset=()=>{throw new Error('Private project data cannot be reset from the browser.');};
+  })();
   RCP.store = S;
 })();

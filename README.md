@@ -1,53 +1,73 @@
 # DBS Research & Competitions Platform
 
-The original school-branded interface and application workflows are retained. The current update adds account and document-access controls to the **browser prototype**; it does not turn GitHub Pages into a secure multi-user service.
+The original school-branded UI remains. There are now two modes:
 
-## Sign in
+- **GitHub Pages:** public synthetic trial documents and high-level project summaries. Browser account controls demonstrate the workflow; they cannot hide material included in the public source.
+- **Private backend:** the same UI served by `server.cjs`, with shared SQLite state, server-checked accounts/project membership and private file downloads. The local server binds to localhost by default. This is prepared for a later VPS move; it has not been deployed on a VPS.
 
-Open the published site or run `Open Platform.command` locally.
+## Private local workspace
 
-The initial prototype administrator is:
+Requires Node 24+. No npm installation is needed.
 
-- Username: `Mr. XXX`
-- Default password: `Mr. XXX`
+```sh
+node server.cjs
+```
 
-Existing accounts use their full displayed name as the username and default password, including spaces and punctuation (for example `Mr. Cho Ka Wai`). A new password of at least 12 characters is required on first sign-in. New committee-created accounts follow the same convention. The account's assigned roles determine its starting workspace; visitors cannot click a person or self-select an unassigned role.
+Open `http://localhost:4183` (use that exact hostname). Initial administrator: **Mr. XXX / Mr. XXX**. Change the password on first login. Each original named account initially uses its full displayed name as username and password, including spaces. New committee-created accounts follow the same convention. These predictable defaults are temporary: initialise and change accounts privately before exposing a VPS to visitors.
 
-Under **My account**, change the password. Under committee **Accounts**, create accounts, assign roles, select partner projects, suspend access or reset another account's password to its username. A reset requires another password change. Password changes use salted PBKDF2-SHA256 hashes (120,000 iterations), rather than storing the new password as plaintext. Credentials and data live in that browser's localStorage. Changing account permissions clears that user's prior document grants and invalidates its local session. Tabs receive account/session changes through storage events.
+Under **Accounts**, committee members create or suspend accounts, assign internal/partner roles and reset passwords. Under a project's **Project participants**, the committee selects the students taking part. Student accounts start in the student role and cannot switch into committee roles. Jaden Wong and Trevor Chak are the confirmed Disney participants. They share the four Disney workspaces; they have no access to the PwC project unless the committee explicitly adds them there.
 
-Default passwords are for demonstrating this prototype only. They are public, predictable credentials and must not be used for a real partner rollout.
+The server filters project data before sending it to the browser and checks membership again on each file download or mutation. It uses salted PBKDF2 password hashes, eight-hour HttpOnly sessions, origin and CSRF checks, login rate limiting, and Secure cookies when configured with an HTTPS origin. Account suspension, password reset and membership changes affect subsequent requests. Files are stored under hashed filenames outside the static-file whitelist. Credential fields are not returned in the client state. Sign-ins do not appear in recent activity.
 
-## Content cleanup
+## Disney source content
 
-Disney and **PwC Dark Lab** appear as partner R&D projects on the committee dashboard and register. Unrelated seeded projects, fictional recruitment postings, sample mail, progress logs, approvals and fabricated files are removed on migration and reset. Placeholder competition quotas are cleared; the actual competition catalogue from the proposal remains. User-created projects and uploaded files are retained. The old seed examples remain in source history/code for migration identification but no longer appear in the interface.
+Four workspaces were derived from the supplied Software folder:
 
-The partner projects begin as drafts, without invented approvals or results. Their existing scope descriptions need confirmation with the teams before being treated as an agreed brief.
+1. Railway LiDAR intrusion detection — `RPi5/README.md`.
+2. Railway camera detection — `Camera Detection/README.md`.
+3. Railway sensor and gauge integration — `RPi5/SYSTEM_CONSOLE.md` and supporting notes.
+4. Railway system console and evidence — `RPi5/SYSTEM_CONSOLE.md` and hardware preparation notes.
 
-Sign-ins no longer generate activity entries. Legacy sign-in entries are filtered from committee Recent activity.
+All remain drafts with no invented approvals, field trials or completed results. The source's outstanding validation requirements remain explicit. Each workspace contains a labelled synthetic trial README and checklist CSV: **eight trial files**, with no real field measurements or credentials.
 
-## Partner document access
+The private local import contains **nine original documents**: the two subsystem READMEs, replay CSV, clearance-envelope and maintenance-vehicle PDFs, D6 protocol notes, gauge-mount defaults, system-console notes and pre-hardware notes. No configuration, environment secrets, model files, photographs or full source tree were copied. Originals remain in `.private-pilot/` and are excluded from Git and GitHub Pages. The source folder was read only and was not modified.
 
-Create an **External partner** account and assign it to the appropriate project. Partner accounts cannot also carry internal roles.
+To refresh the selected private documents, stop the server and run:
 
-Upload a document on the project page. The committee uses its **Partner access** controls to select approved recipients. Partners see only selected files in their assigned projects. Student experience/CV evidence cannot be shared. Clearing recipients revokes future access; downloaded copies cannot be recalled. Suspended accounts cannot sign in. Internal project pages are unavailable to partner roles.
+```sh
+node scripts/import-disney.cjs '/absolute/path/to/Software'
+node server.cjs
+```
 
-These are prototype behaviour controls, not a security boundary. Browser data can be inspected or modified, and documents/accounts are not synchronised between different devices. **Do not put confidential R&D files into this public prototype.**
+The importer uses a fixed document allowlist and updates existing records without creating duplicates. It keeps existing partner-recipient choices. Source summaries and original files are local snapshots, not a live sync.
 
-For real Disney/PwC use, retain this UI while moving accounts and workflows to a server: school SSO or invitation-based verified accounts, server-enforced project/document permissions, private file storage, shared database, HTTPS sessions and an agreed retention/backup policy. The GitHub Pages frontend alone cannot provide these. Soft launch requires backend hosting, verified partner contacts and approved documents before invitations are sent.
+## Partner documents
 
-## Existing workflows
+Create an External partner account and assign a project. Use **Partner access** on the project files to approve named recipients. New imports are internal-only. Student experience/CV evidence cannot be shared. Unchecking recipients revokes future access; previously downloaded copies cannot be recalled. Partner accounts cannot upload or view internal project logs and personal details.
 
-The original application wizard, teacher endorsement, committee review, mentor matching, project logs, attachments, quotas, register, CSV export, deadlines and calendar remain available. Notifications in Mail simulate email delivery.
+## VPS migration later
 
-## Verification
+The backend and Dockerfile are included; no hosted service was provisioned.
+
+1. Transfer the application and the private data directory separately over an authenticated channel. Keep one server instance; stop it before copying the SQLite database and its WAL files, or use an SQLite backup.
+2. Use Node 24+ or the Dockerfile. Persist `PILOT_DATA_DIR` outside the public web root. Back up database and files together, and verify restore.
+3. Put the service behind an HTTPS reverse proxy. Set `PILOT_ORIGIN` to the exact HTTPS site URL; it controls origin checks and Secure cookies. Set `PORT` as needed. Keep the node listener on localhost, or set `HOST=0.0.0.0` only inside a properly isolated container/network.
+4. Change all temporary default passwords and verify the participant roster privately before exposing the service. Add verified invitation delivery/identity and agree retention/partner sharing before wider rollout.
+5. Serve the UI and API from the same origin. The UI detects `/api/session` automatically; no secrets are needed in client code.
+
+The backend serialises requests and stores the existing workflow model in SQLite. It is for a small pilot; managed identity, finer operational monitoring and a more scalable data model are later rollout work.
+
+## Tests
 
 ```sh
 node tests/accounts.cjs
+node tests/private-server.cjs
 node --check app.js
 node --check store.js
 node --check data.js
+node --check server.cjs
 ```
 
-The account checks cover clean seed data, failed login, removal of role-picker impersonation, mandatory default-password change, role assignment, account suspension, document approval and revocation, cross-partner separation, CV evidence restrictions and reload persistence.
+Tests cover login/default-password change, assigned roles, account suspension, partner grants, evidence restrictions, reload persistence, server-side participant filtering, denied direct downloads and writes, membership revocation, CSRF/origin checks, session logout and private-path isolation. The HTTP tests use temporary data and delete it afterward.
 
-`docs/` is the GitHub Pages publishing directory. Root and published frontend files are kept identical. Asset version queries prevent browsers combining old and updated scripts.
+Existing applications, endorsement, review, mentor matching, progress logs, uploads, quotas, register, calendar and CSV workflows retain their UI. Mail simulates email delivery. Source and published files in `docs/` are kept in sync. Asset versions prevent old scripts mixing with updated pages.

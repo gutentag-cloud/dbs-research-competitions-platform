@@ -40,8 +40,7 @@
   const notify = (msg, tone) => { flash = { msg, tone: tone || 'good' }; };
 
   // ---------- permissions ----------
-  const canSee = (p, me, role) =>
-    role === 'committee' || p.members.includes(me.id) || p.teacherId === me.id || p.mentorId === me.id;
+  const canSee = (p, me, role) => S.canSeeProject(p,me,role);
 
   // ---------- chrome ----------
   const NAV = {
@@ -59,10 +58,10 @@
       const on = href === '#/' ? route === '#/' : route.startsWith(href) && !(href === '#/postings' && route === '#/postings/new');
       return html`<a href="${href}" class="${on ? 'on' : ''}">${label}</a>`;
     });
-    const otherRoles = me.roles.filter((r) => r !== role);
+    const otherRoles = me.roles.filter((r) => r !== role && !me.roles.includes('student'));
     return html`
       <header class="topbar">
-        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>Browser prototype · Disney & PwC Dark Lab</small></span></a>
+        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>${S.isRemote() ? 'Private R&D workspace' : 'Browser prototype'} · Disney & PwC Dark Lab</small></span></a>
         <nav class="nav">${links}<a href="#/account">My account</a><a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
         <div class="whoami">
           ${avatar(me.id)}
@@ -73,8 +72,8 @@
       </header>
       ${flash ? html`<div class="flash tone-${flash.tone}" role="status">${flash.msg}</div>` : ''}
       <main class="page">${body}</main>
-      <footer class="foot"><span>Demo data stays in this browser. Notifications appear in Mail.</span><a href="#/account">My account</a>
-        <button class="link" data-act="reset">Reset demo data</button></footer>`;
+      <footer class="foot"><span>${S.isRemote() ? 'Private workspace · project access checked by the server.' : 'Public trial workspace · browser-local accounts.'} Notifications appear in Mail.</span><a href="#/account">My account</a>
+        ${S.isRemote() ? '' : html`<button class="link" data-act="reset">Reset demo data</button>`}</footer>`;
   }
 
   // ---------- login ----------
@@ -83,22 +82,22 @@
       <img src="assets/crest.png" alt="Diocesan Boys' School crest">
       <h1>Research &amp; Competitions Platform</h1>
       <p>Research projects and competition entries at Diocesan Boys’ School.</p>
-      <p class="poc-note">Browser prototype. Account settings and files stay in this browser; real partner access requires a hosted service.</p>
+      <p class="poc-note">${S.isRemote() ? 'Private project workspace. Sign in with your assigned account.' : 'Public browser prototype. Original project files are kept in the private workspace.'}</p>
       <div class="login-note"><p>Disney and PwC Dark Lab R&amp;D projects.</p><small>2026–27 school year</small></div>
     </div><div class="login-pick"><h2>Sign in</h2><p class="muted">Use your assigned account. Roles are managed by the committee.</p>
       ${flash ? html`<div class="flash tone-${flash.tone}" role="alert">${flash.msg}</div>` : ''}
       <form data-form="login"><label class="field"><span>Username</span><input name="username" autocomplete="username" required></label>
       <label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" maxlength="256" required></label><button class="btn">Sign in</button></form>
-      <p class="small muted">Prototype administrator: <b>Mr. XXX</b>. Default password is the username, including spaces and punctuation. Change it on first sign-in.</p>
+      <p class="small muted">${S.isRemote() ? 'Initial local administrator' : 'Prototype administrator'}: <b>Mr. XXX</b>. Default password is the username, including spaces and punctuation. Change it on first sign-in.</p>
       <p class="small muted">Existing accounts use their displayed name as the username, for example Mr. Cho Ka Wai.</p>
     </div></div>`;
   }
 
   function viewAccount() {
     const u = S.me();
-    return html`<div class="page-head"><div><h1>${u.mustChangePassword ? 'Change your default password' : 'My account'}</h1><p class="muted">${u.username} · ${u.roles.map(r => ROLE_LABEL[r]).join(', ')}</p></div></div>
+    return html`<div class="page-head"><div><h1>${u.mustChangePassword ? 'Change your default password' : 'My account'}</h1><p class="muted">${u.username} · ${(u.roles.includes('student') ? ['student'] : u.roles).map(r => ROLE_LABEL[r]).join(', ')}</p></div></div>
     <section class="panel"><p>${u.mustChangePassword ? 'Set a new password before opening projects or managing accounts.' : 'Change your password here.'}</p>
-    <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form><p class="small muted">At least 12 characters. This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.</p></section>`;
+    <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form><p class="small muted">At least 12 characters. ${S.isRemote() ? 'Accounts are saved on the private server.' : 'This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.'}</p></section>`;
   }
   function accountFields(u) {
     return html`<label class="field"><span>Username / display name</span><input name="username" value="${u ? u.username : ''}" required maxlength="100"></label>
@@ -108,7 +107,7 @@
   }
   function viewAccounts() {
     return html`<div class="page-head"><div><h1>Account management</h1><p class="muted">Assign roles, enable or suspend accounts, and select partner projects.</p></div></div>
-    <div class="callout tone-warn">Prototype accounts apply to this browser only. Default passwords match usernames and must be changed on first sign-in. Do not use this public prototype for confidential partner documents.</div>
+    <div class="callout tone-warn">${S.isRemote() ? 'Accounts are saved on this server. Default passwords must be changed before documents can be downloaded. Set up accounts privately before opening a hosted pilot.' : 'Prototype accounts apply to this browser only. Default passwords match usernames and must be changed on first sign-in. Original documents belong in the private workspace.'}</div>
     <section class="panel"><h2>Create account</h2><form data-form="account-manage">${accountFields(null)}<button class="btn">Create account</button></form></section>
     ${S.db.users.filter(u => u.id !== S.me().id).map(u => html`<details class="panel"><summary>${u.username} · ${u.roles.map(r => ROLE_LABEL[r]).join(', ')} · ${u.active === false ? 'Suspended' : 'Enabled'}</summary><form data-form="account-manage" data-user="${u.id}">${accountFields(u)}<div class="row"><button class="btn">Save access</button><button type="button" class="btn ghost" data-act="account-reset" data-user="${u.id}">Reset to default password</button></div></form></details>`)}`;
   }
@@ -228,7 +227,7 @@
   }
 
   function viewCommitteeHome() {
-    const P = S.db.projects;
+    const P = S.db.projects.filter(p=>canSee(p,S.me(),S.role()));
     const review = P.filter((p) => p.status === 'review');
     const endorsement = P.filter((p) => p.status === 'endorsement');
     const active = P.filter((p) => p.status === 'active');
@@ -264,7 +263,7 @@
           </ul>
         </section>
       </div>
-      <section class="panel"><h3>Partner R&amp;D projects</h3><div class="cards">${P.filter(p => ['p-disney','p-pwc'].includes(p.id)).map(p => projectCard(p))}</div></section>
+      <section class="panel"><h3>Partner R&amp;D projects</h3><div class="cards">${P.filter(p => (p.id.startsWith('p-disney') || p.id === 'p-pwc')).map(p => projectCard(p))}</div></section>
       <section class="panel"><h3>Recent activity</h3>${auditList(S.db.audit.filter(a => !/^signed in as /i.test(a.text)).slice(0, 8))}<a class="small" href="#/audit">Full audit log →</a></section>`;
   }
 
@@ -378,7 +377,7 @@
         <div>
           <div class="track">${trackLabel(p)}</div>
           <h1>${p.title || 'Untitled draft'}</h1>
-          <div class="head-meta">${badge(p.status)} <span class="muted small">Started ${date(p.createdAt)}${p.origin === 'teacher' ? ' · Teacher-initiated' : p.origin === 'oldboy' ? ' · Old Boy-initiated' : ''}</span></div>
+          <div class="head-meta">${badge(p.status)} <span class="muted small">${p.workspaceImported ? 'Workspace added' : 'Started'} ${date(p.createdAt)}${p.origin === 'teacher' ? ' · Teacher-initiated' : p.origin === 'oldboy' ? ' · Old Boy-initiated' : ''}</span></div>
         </div>
         <div class="head-actions">
           ${isMember && ['draft', 'returned'].includes(p.status) ? html`<a class="btn" href="#/apply/${p.id}">${p.status === 'returned' ? 'Revise and resubmit' : 'Continue application'}</a>` : ''}
@@ -386,13 +385,14 @@
           ${p.teacherId === me.id && p.status === 'endorsement' ? html`<a class="btn" href="#/endorse/${p.id}">Endorse</a>` : ''}
         </div>
       </div>
+      ${role === 'committee' && !me.roles.includes('student') ? html`<details class="panel"><summary>Project participants</summary><form data-form="project-members" data-project="${p.id}">${S.usersWith('student').map(u=>html`<label class="check"><input type="checkbox" name="members" value="${u.id}" ${p.members.includes(u.id)?'checked':''}> ${u.name}</label>`)}<button class="btn small">Save participants</button></form></details>` : ''}
       ${checklist(p)}
       ${p.endorsement && p.endorsement.declined && p.status === 'returned' ? html`<div class="callout tone-bad"><b>Returned by ${S.displayName(p.endorsement.by)}:</b> ${p.endorsement.note}</div>` : ''}
       <div class="grid-2">
         <section>
           <div class="panel">
             <h3>Proposal</h3>
-            <p class="pre">${p.abstract || '—'}</p>
+            <p class="pre">${p.abstract || '—'}</p>${p.sourceReference ? html`<p class="small muted">Source: ${p.sourceReference}. No field-test completion or approval is implied.</p>` : ''}
             ${comp ? html`<p class="small muted"><b>${comp.name}</b> · ${comp.hkRound} · Final: ${comp.final}</p>` : ''}
             <h4>Previous experience</h4><p class="pre small">${p.experience || '—'}</p>
             ${fileChips(expFiles(p))}
@@ -458,8 +458,8 @@
           </div>
 
           <div class="panel">
-            <h3>Files</h3>
-            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
+            <h3>Files</h3>${S.isRemote() ? html`<p class="small muted">Private server storage. Downloads require your assigned project account.</p>` : html`<p class="small muted">Public trial files only. Original project files are available in the private local workspace.</p>`}
+            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.trial ? 'Trial · synthetic · ' : ''}${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
             ${isMember || isMentor || role === 'committee' ? html`
               <form data-form="upload" class="upload">
                 <select name="category" aria-label="File type">${RCP.FILE_CATEGORIES.map((c) => html`<option>${c}</option>`)}</select>
@@ -873,6 +873,7 @@
       case 'review': body = guard(['committee'], () => {
         if (!parts[1]) return viewReviewQueue();
         const p = S.project(parts[1]);
+        if (p && !canSee(p,me,role)) return empty('This project is not assigned to your account.');
         if (!p) return empty('Not found.', '#/review', 'Back');
         return p.status === 'review' ? decisionPage(p, 'review') : viewProject(me, role, p.id);
       }); break;
@@ -928,21 +929,22 @@
     const act = el.dataset.act;
     const me = S.me();
     const hash = location.hash;
+    if (!me && !['signin','login-role','demo-open','reset'].includes(act)) return;
     if (act === 'calendar-mode') { calendarMode = el.dataset.mode; route(); }
     else if (act === 'calendar-open') { calendarMode = 'agenda'; route(); const target = document.getElementById('calendar-' + el.dataset.event); if(target) {target.open = true; target.scrollIntoView({block:'start'});} }
     else if (act === 'login-role') { loginRole = el.dataset.role; route(); }
     else if (act === 'demo-open') { location.hash = '#/'; route(); }
-    else if (act === 'account-reset') { if (el.dataset.armed !== '1') {el.dataset.armed='1';el.textContent='Confirm password reset';return;} try {S.resetPassword(el.dataset.user);notify('Default password restored; change required at next sign-in.');} catch(err){notify(err.message,'bad');} route(); }
-    else if (act === 'signout') { S.signOut(); wizard = null; location.hash = '#/'; route(); }
+    else if (act === 'account-reset') { if (el.dataset.armed !== '1') {el.dataset.armed='1';el.textContent='Confirm password reset';return;} try {await S.resetPassword(el.dataset.user);notify('Default password restored; change required at next sign-in.');} catch(err){notify(err.message,'bad');} route(); }
+    else if (act === 'signout') { await S.signOut(); wizard = null; location.hash = '#/'; route(); }
     else if (act === 'reset') {
       if (el.dataset.armed !== '1') { el.dataset.armed = '1'; el.textContent = 'Reset — click again to confirm'; setTimeout(() => { el.dataset.armed = '0'; el.textContent = 'Reset demo data'; }, 5000); return; }
-      S.reset(); S.signOut(); wizard = null; location.hash = '#/'; location.reload();
+      S.reset(); await S.signOut(); wizard = null; location.hash = '#/'; location.reload();
     }
     else if (act === 'wiz-back') { readWizard(el.closest('form')); wizard.step--; route(); }
-    else if (act === 'read') { S.markRead(el.dataset.mail); }
-    else if (act === 'del-deadline') { try { S.removeDeadline(el.dataset.id, me.id); notify('Deadline removed.'); } catch (err) { notify(err.message, 'bad'); } route(); }
-    else if (act === 'final') { S.submitFinal(hash.split('/')[2], me.id); notify('Final submission recorded and notifications added to Mail.'); route(); }
-    else if (act === 'shortlist') { S.shortlist(hash.split('/')[2], el.dataset.app, me.id, el.dataset.yes === '1'); notify(el.dataset.yes === '1' ? 'Applicant sent to the committee for eligibility review.' : 'Applicant declined.'); route(); }
+    else if (act === 'read') { await S.markRead(el.dataset.mail); }
+    else if (act === 'del-deadline') { try { await S.removeDeadline(el.dataset.id, me.id); notify('Deadline removed.'); } catch (err) { notify(err.message, 'bad'); } route(); }
+    else if (act === 'final') { await S.submitFinal(hash.split('/')[2], me.id); notify('Final submission recorded and notifications added to Mail.'); route(); }
+    else if (act === 'shortlist') { await S.shortlist(hash.split('/')[2], el.dataset.app, me.id, el.dataset.yes === '1'); notify(el.dataset.yes === '1' ? 'Applicant sent to the committee for eligibility review.' : 'Applicant declined.'); route(); }
     else if (act === 'csv') {
       await showBlob('dbs-research-competitions-register.csv', new Blob([S.exportCsv()], { type: 'text/csv' }));
     } else if (act === 'download') {
@@ -967,13 +969,13 @@
     if (el) applyFilter(el);
   });
 
-  document.addEventListener('change', (e) => {
+  document.addEventListener('change', async (e) => {
     const sort = e.target.closest('[data-sort]');
     if (sort) { applySort(sort); return; }
     if (e.target.matches('[data-act=calendar-filter]')) { calendarCompetition = e.target.value; route(); }
-    if (e.target.matches('[data-act=calendar-check]')) { S.setCalendarCheck(S.me().id, e.target.dataset.event, Number(e.target.dataset.index), e.target.checked); const box = e.target.closest('details'); const count = box.querySelector('summary > .small'); count.textContent = `${box.querySelectorAll('input:checked').length}/${box.querySelectorAll('input').length} prepared`; }
+    if (e.target.matches('[data-act=calendar-check]')) { await S.setCalendarCheck(S.me().id, e.target.dataset.event, Number(e.target.dataset.index), e.target.checked); const box = e.target.closest('details'); const count = box.querySelector('summary > .small'); count.textContent = `${box.querySelectorAll('input:checked').length}/${box.querySelectorAll('input').length} prepared`; }
     if (e.target.matches('[data-act="switch-role"]') && e.target.value) {
-      S.signIn(S.me().id, e.target.value); wizard = null; location.hash = '#/'; route();
+      await S.signIn(S.me().id, e.target.value); wizard = null; location.hash = '#/'; route();
     }
     if (e.target.closest('[data-form="wizard"]') && wizard && wizard.step === 0 && (e.target.name === 'stage' || e.target.name === 'competitionId')) {
       readWizard(e.target.closest('form')); route();
@@ -992,54 +994,55 @@
       switch (form.dataset.form) {
         case 'login': await S.login(fd.get('username'),fd.get('password')); wizard=null;location.hash='#/';route();return;
         case 'password': if(fd.get('password') !== fd.get('confirm')) throw new Error('Passwords do not match.');await S.changePassword(fd.get('current'),fd.get('password'));notify('Password updated.');location.hash='#/';route();return;
-        case 'account-manage': S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active')});notify('Account access saved. New accounts use their username as the default password.');break;
-        case 'share-file': S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
+        case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active')});notify('Account access saved. New accounts use their username as the default password.');break;
+        case 'project-members': await S.setProjectMembers(projectId,fd.getAll('members'));notify('Project participants updated.');break;
+        case 'share-file': await S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
 
         case 'wizard': {
           readWizard(form);
           if (wizard.step === 4 && !wizard.teacherId) throw new Error('Choose a teacher to endorse this application.');
-          const p = S.saveDraft(wizard, me.id);
+          const p = await S.saveDraft(wizard, me.id);
           wizard.id = p.id;
           if (wizard.step === 3) for (const f of fd.getAll('expfiles')) if (f && f.size) await S.addFile(p.id, f, 'Experience evidence', me.id);
           if (wizard.step < STEPS.length - 1) { wizard.step++; }
-          else { S.submit(p.id, me.id); wizard = null; notify(`Endorsement requested from ${S.displayName(p.teacherId)} in Mail.`); location.hash = `#/project/${p.id}`; return; }
+          else { await S.submit(p.id, me.id); wizard = null; notify(`Endorsement requested from ${S.displayName(p.teacherId)} in Mail.`); location.hash = `#/project/${p.id}`; return; }
           break;
         }
         case 'endorse': {
-          S.endorse(projectId, me.id, choice === 'yes', fd.get('note').trim());
+          await S.endorse(projectId, me.id, choice === 'yes', fd.get('note').trim());
           notify(choice === 'yes' ? 'Endorsement sent to the committee.' : 'Returned to the students with your comments.');
           if (form.dataset.project && (location.hash === '#/' || location.hash === '')) route(); else location.hash = '#/endorse';
           return;
         }
-        case 'review': S.decide(projectId, me.id, choice === 'yes', fd.get('note').trim(), fd.get('mentorId') || null); notify(choice === 'yes' ? 'Approval sent to the team and teacher in Mail.' : 'Decision recorded and the team notified.'); location.hash = '#/review'; return;
+        case 'review': await S.decide(projectId, me.id, choice === 'yes', fd.get('note').trim(), fd.get('mentorId') || null); notify(choice === 'yes' ? 'Approval sent to the team and teacher in Mail.' : 'Decision recorded and the team notified.'); location.hash = '#/review'; return;
         case 'log': {
           const ids = [];
           for (const f of fd.getAll('files')) if (f && f.size) ids.push(await S.addFile(projectId, f, 'Progress log', me.id));
-          S.addLog(projectId, me.id, fd.get('date'), fd.get('text'), ids);
+          await S.addLog(projectId, me.id, fd.get('date'), fd.get('text'), ids);
           notify('Log posted.');
           break;
         }
-        case 'comment': S.comment(projectId, form.dataset.log, me.id, fd.get('text')); notify('Feedback sent to the team.'); break;
-        case 'add-deadline': S.addDeadline(projectId, fd.get('title'), fd.get('date'), me.id); notify('Deadline added; the team has been notified in Mail.'); break;
+        case 'comment': await S.comment(projectId, form.dataset.log, me.id, fd.get('text')); notify('Feedback sent to the team.'); break;
+        case 'add-deadline': await S.addDeadline(projectId, fd.get('title'), fd.get('date'), me.id); notify('Deadline added; the team has been notified in Mail.'); break;
         case 'upload': { const f = fd.get('file'); if (!f || !f.size) throw new Error('Choose a file first.'); await S.addFile(projectId, f, fd.get('category'), me.id); notify(`Uploaded ${f.name}.`); break; }
-        case 'assign-mentor': if (!fd.get('mentorId')) throw new Error('Pick a mentor.'); S.assignMentor(projectId, fd.get('mentorId'), me.id); notify('Mentor assigned and emailed.'); break;
-        case 'result': S.recordResult(projectId, me.id, fd.get('result')); notify('Result saved.'); break;
-        case 'industry-followup': S.recommendIndustry(projectId, me.id, fd.get('note')); notify('Recommended for a long-term industry project; the team, teacher and mentor are notified.'); break;
-        case 'places': S.setPlaces(form.dataset.comp, Number(fd.get('places')), me.id); notify('Places updated.'); break;
-        case 'apply-posting': S.apply(projectId, me.id, fd.get('cv'), fd.get('coursework')); notify('Application sent to the Old Boy.'); break;
+        case 'assign-mentor': if (!fd.get('mentorId')) throw new Error('Pick a mentor.'); await S.assignMentor(projectId, fd.get('mentorId'), me.id); notify('Mentor assigned and emailed.'); break;
+        case 'result': await S.recordResult(projectId, me.id, fd.get('result')); notify('Result saved.'); break;
+        case 'industry-followup': await S.recommendIndustry(projectId, me.id, fd.get('note')); notify('Recommended for a long-term industry project; the team, teacher and mentor are notified.'); break;
+        case 'places': await S.setPlaces(form.dataset.comp, Number(fd.get('places')), me.id); notify('Places updated.'); break;
+        case 'apply-posting': await S.apply(projectId, me.id, fd.get('cv'), fd.get('coursework')); notify('Application sent to the Old Boy.'); break;
         case 'new-posting': {
-          const o = S.post(me.id, { title: fd.get('title').trim(), org: fd.get('org').trim(), description: fd.get('description').trim(), places: Number(fd.get('places')), hours: fd.get('hours').trim(), duration: fd.get('duration').trim(), requirements: fd.get('requirements').trim(), audience: fd.get('audience') || 'all' });
+          const o = await S.post(me.id, { title: fd.get('title').trim(), org: fd.get('org').trim(), description: fd.get('description').trim(), places: Number(fd.get('places')), hours: fd.get('hours').trim(), duration: fd.get('duration').trim(), requirements: fd.get('requirements').trim(), audience: fd.get('audience') || 'all' });
           for (const f of fd.getAll('files')) if (f && f.size) await S.addPostingFile(o.id, f, me.id);
           notify('Project open to students in the selected year levels.'); location.hash = `#/postings/${o.id}`; return;
         }
         case 'teacher-project': {
           const members = fd.getAll('members');
           if (!members.length) throw new Error('Tick at least one student to take part.');
-          const p = S.teacherProject(me.id, { title: fd.get('title'), abstract: fd.get('abstract'), members, competitionId: fd.get('competitionId') || null, partner: fd.get('partner') || '', experience: fd.get('experience'), mentorId: fd.get('mentorId') || null });
+          const p = await S.teacherProject(me.id, { title: fd.get('title'), abstract: fd.get('abstract'), members, competitionId: fd.get('competitionId') || null, partner: fd.get('partner') || '', experience: fd.get('experience'), mentorId: fd.get('mentorId') || null });
           notify('Project created and sent to the committee to ratify.');
           location.hash = `#/project/${p.id}`; return;
         }
-        case 'eligibility': S.confirmEligibility(form.dataset.posting, form.dataset.app, me.id, choice === 'yes', fd.get('teacherId')); notify(choice === 'yes' ? 'Student placed on the project.' : 'Marked not eligible.'); break;
+        case 'eligibility': await S.confirmEligibility(form.dataset.posting, form.dataset.app, me.id, choice === 'yes', fd.get('teacherId')); notify(choice === 'yes' ? 'Student placed on the project.' : 'Marked not eligible.'); break;
       }
     } catch (err) {
       notify(err.message || String(err), 'bad');
@@ -1049,5 +1052,5 @@
 
   window.addEventListener('hashchange', route);
   window.addEventListener('rcp-sync', route);
-  route();
+  Promise.resolve(S.ready).then(route).catch(error=>{notify(error.message,'bad');route();});
 })();
