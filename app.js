@@ -62,7 +62,7 @@
     return html`
       <header class="topbar">
         <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>${S.isRemote() ? 'Private R&D workspace' : 'Browser prototype'} · Disney & PwC Dark Lab</small></span></a>
-        <nav class="nav">${links}<a href="#/account">My account</a><a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
+        <nav class="nav">${links}<a href="#/workspaces">Workspaces</a><a href="#/account">My account</a><a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
         <div class="whoami">
           ${avatar(me.id)}
           <div><b>${me.name}</b><small>${ROLE_LABEL[role]}${me.title && role !== 'student' ? ` · ${me.title}` : ''}</small></div>
@@ -88,16 +88,23 @@
       ${flash ? html`<div class="flash tone-${flash.tone}" role="alert">${flash.msg}</div>` : ''}
       <form data-form="login"><label class="field"><span>Username</span><input name="username" autocomplete="username" required></label>
       <label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" maxlength="256" required></label><button class="btn">Sign in</button></form>
-      <p class="small muted">${S.isRemote() ? 'Initial local administrator' : 'Prototype administrator'}: <b>Mr. XXX</b>. Default password is the username, including spaces and punctuation. Change it on first sign-in.</p>
+      <p class="small muted">${S.isRemote() ? 'Initial local administrator' : 'Prototype administrator'}: <b>Mr. XXX</b>. Default password is the username, including spaces and punctuation. You can change it or continue with it on first sign-in.</p>
       <p class="small muted">Existing accounts use their displayed name as the username, for example Mr. Cho Ka Wai.</p>
     </div></div>`;
   }
 
   function viewAccount() {
     const u = S.me();
-    return html`<div class="page-head"><div><h1>${u.mustChangePassword ? 'Change your default password' : 'My account'}</h1><p class="muted">${u.username} · ${(u.roles.includes('student') ? ['student'] : u.roles).map(r => ROLE_LABEL[r]).join(', ')}</p></div></div>
-    <section class="panel"><p>${u.mustChangePassword ? 'Set a new password before opening projects or managing accounts.' : 'Change your password here.'}</p>
-    <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form><p class="small muted">At least 12 characters. ${S.isRemote() ? 'Accounts are saved on the private server.' : 'This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.'}</p></section>`;
+    return html`<div class="page-head"><div><h1>${u.mustChangePassword ? 'Choose your password option' : 'My account'}</h1><p class="muted">${u.username} · ${(u.roles.includes('student') ? ['student'] : u.roles).map(r => ROLE_LABEL[r]).join(', ')}</p></div></div>
+    <section class="panel"><p>${u.mustChangePassword ? 'Change your password, or continue with the default password.' : 'Change your password here.'}</p>
+    <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form>${u.mustChangePassword ? html`<button class="btn ghost" data-act="skip-password">Continue with default password</button>` : ''}<p class="small muted">At least 12 characters. ${S.isRemote() ? 'Accounts are saved on the private server.' : 'This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.'}</p></section>`;
+  }
+  function projectLinks(p) {
+    return html`<div class="row">${p.links?.github ? html`<a class="btn small ghost" href="${p.links.github}" target="_blank" rel="noopener noreferrer">Open GitHub ↗</a>` : ''}${p.links?.drive ? html`<a class="btn small ghost" href="${p.links.drive}" target="_blank" rel="noopener noreferrer">Open Google Drive ↗</a>` : ''}</div>`;
+  }
+  function viewWorkspaces(me,role) {
+    const projects=S.db.projects.filter(p=>canSee(p,me,role));
+    return html`<div class="page-head"><div><h1>Project workspaces</h1><p class="muted">Open each project's files, updates and shared resources.</p></div></div><div class="cards">${projects.map(p=>html`<section class="panel"><span class="track">${trackLabel(p)}</span><h2><a href="#/project/${p.id}">${p.title}</a></h2><p class="small muted">${p.files.length} files · ${p.members.map(S.displayName).join(', ') || 'Team to be assigned'}</p>${projectLinks(p)}<p><a href="#/project/${p.id}">Open workspace →</a></p></section>`)}</div>${projects.length ? '' : empty('No projects assigned yet.')}`;
   }
   function accountFields(u) {
     return html`<label class="field"><span>Username / display name</span><input name="username" value="${u ? u.username : ''}" required maxlength="100"></label>
@@ -107,7 +114,7 @@
   }
   function viewAccounts() {
     return html`<div class="page-head"><div><h1>Account management</h1><p class="muted">Assign roles, enable or suspend accounts, and select partner projects.</p></div></div>
-    <div class="callout tone-warn">${S.isRemote() ? 'Accounts are saved on this server. Default passwords must be changed before documents can be downloaded. Set up accounts privately before opening a hosted pilot.' : 'Prototype accounts apply to this browser only. Default passwords match usernames and must be changed on first sign-in. Original documents belong in the private workspace.'}</div>
+    <div class="callout tone-warn">${S.isRemote() ? 'Accounts are saved on this server. At first sign-in, users can change their password or choose to keep the default. Set up accounts privately before opening a hosted pilot.' : 'Prototype accounts apply to this browser only. Default passwords match usernames; changing them on first sign-in is optional. Original documents belong in the private workspace.'}</div>
     <section class="panel"><h2>Create account</h2><form data-form="account-manage">${accountFields(null)}<button class="btn">Create account</button></form></section>
     ${S.db.users.filter(u => u.id !== S.me().id).map(u => html`<details class="panel"><summary>${u.username} · ${u.roles.map(r => ROLE_LABEL[r]).join(', ')} · ${u.active === false ? 'Suspended' : 'Enabled'}</summary><form data-form="account-manage" data-user="${u.id}">${accountFields(u)}<div class="row"><button class="btn">Save access</button><button type="button" class="btn ghost" data-act="account-reset" data-user="${u.id}">Reset to default password</button></div></form></details>`)}`;
   }
@@ -385,6 +392,7 @@
           ${p.teacherId === me.id && p.status === 'endorsement' ? html`<a class="btn" href="#/endorse/${p.id}">Endorse</a>` : ''}
         </div>
       </div>
+      <section class="panel"><h3>Workspace links</h3>${projectLinks(p)}<p class="small muted">Google Drive and GitHub access is controlled by those services.</p><details><summary>Edit links</summary><form data-form="project-links" data-project="${p.id}"><label class="field"><span>GitHub repository</span><input type="url" name="github" value="${p.links?.github || ''}" placeholder="https://github.com/owner/repository"></label><label class="field"><span>Google Drive folder or document</span><input type="url" name="drive" value="${p.links?.drive || ''}" placeholder="https://drive.google.com/..."></label><button class="btn small">Save links</button></form></details></section>
       ${role === 'committee' && !me.roles.includes('student') ? html`<details class="panel"><summary>Project participants</summary><form data-form="project-members" data-project="${p.id}">${S.usersWith('student').map(u=>html`<label class="check"><input type="checkbox" name="members" value="${u.id}" ${p.members.includes(u.id)?'checked':''}> ${u.name}</label>`)}<button class="btn small">Save participants</button></form></details>` : ''}
       ${checklist(p)}
       ${p.endorsement && p.endorsement.declined && p.status === 'returned' ? html`<div class="callout tone-bad"><b>Returned by ${S.displayName(p.endorsement.by)}:</b> ${p.endorsement.note}</div>` : ''}
@@ -859,6 +867,7 @@
     const guard = (roles, fn) => (roles.includes(role) ? fn() : empty('This page is for ' + roles.map((r) => ROLE_LABEL[r].toLowerCase()).join(' and ') + ' accounts.', '#/', 'Back'));
     switch (parts[0]) {
       case '': body = { student: viewStudentHome, teacher: viewTeacherHome, mentor: viewMentorHome, committee: viewCommitteeHome, partner: viewPartnerHome }[role](me); break;
+      case 'workspaces': body=viewWorkspaces(me,role);break;
       case 'account': body = viewAccount(); break;
       case 'accounts': body = guard(['committee'],viewAccounts); break;
       case 'apply': body = guard(['student'], () => viewApply(me, parts[1])); break;
@@ -935,6 +944,7 @@
     else if (act === 'login-role') { loginRole = el.dataset.role; route(); }
     else if (act === 'demo-open') { location.hash = '#/'; route(); }
     else if (act === 'account-reset') { if (el.dataset.armed !== '1') {el.dataset.armed='1';el.textContent='Confirm password reset';return;} try {await S.resetPassword(el.dataset.user);notify('Default password restored; change required at next sign-in.');} catch(err){notify(err.message,'bad');} route(); }
+    else if (act === 'skip-password') {try{await S.skipPasswordChange();notify('Continuing with your current password.');location.hash='#/workspaces';route();}catch(err){notify(err.message,'bad');route();}}
     else if (act === 'signout') { await S.signOut(); wizard = null; location.hash = '#/'; route(); }
     else if (act === 'reset') {
       if (el.dataset.armed !== '1') { el.dataset.armed = '1'; el.textContent = 'Reset — click again to confirm'; setTimeout(() => { el.dataset.armed = '0'; el.textContent = 'Reset demo data'; }, 5000); return; }
@@ -995,6 +1005,7 @@
         case 'login': await S.login(fd.get('username'),fd.get('password')); wizard=null;location.hash='#/';route();return;
         case 'password': if(fd.get('password') !== fd.get('confirm')) throw new Error('Passwords do not match.');await S.changePassword(fd.get('current'),fd.get('password'));notify('Password updated.');location.hash='#/';route();return;
         case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active')});notify('Account access saved. New accounts use their username as the default password.');break;
+        case 'project-links': await S.setProjectLinks(projectId,{github:fd.get('github'),drive:fd.get('drive')});notify('Workspace links saved.');break;
         case 'project-members': await S.setProjectMembers(projectId,fd.getAll('members'));notify('Project participants updated.');break;
         case 'share-file': await S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
 

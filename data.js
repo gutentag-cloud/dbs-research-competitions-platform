@@ -497,3 +497,19 @@ RCP.applyCalendarProposal = function(db) {
   };
   RCP.seed=()=>RCP.addDisneyWorkspaces(seed());
 })();
+
+// Link existing workspaces without changing their workflow status or membership.
+(() => {
+  const seed=RCP.seed;
+  RCP.addWorkspaceLinks = db => {
+    if(db.workspaceLinksRevision===1)return db;
+    for(const p of db.projects) {
+      p.links ||= {};
+      if(p.id.startsWith('p-disney'))p.links.github ||= 'https://github.com/gutentag-cloud/Disney-Railway-Tracker';
+      if(p.id==='p-pwc')p.links.github ||= 'https://github.com/gutentag-cloud/DBS-Robotics-R-D-x-PwC-Domain-Project';
+      p.links.drive ||= '';
+    }
+    db.workspaceLinksRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.addWorkspaceLinks(seed());
+})();

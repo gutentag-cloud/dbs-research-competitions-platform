@@ -22,7 +22,7 @@ window.RCP = window.RCP || {};
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) {
         if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
-        return RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed))));
+        return RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)))));
       }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
@@ -79,6 +79,23 @@ window.RCP = window.RCP || {};
   S.signOut = function () { safe.removeItem(SESSION); };
   S.me = function () { const s = S.session(); return s ? S.user(s.userId) : null; };
   S.role = function () { const s = S.session(); return s ? s.role : null; };
+  S.skipPasswordChange = () => {
+    const u=S.me();if(!u)throw new Error('Please sign in.');
+    const role=S.role();u.mustChangePassword=false;u.defaultPasswordAccepted=!u.passwordHash;u.authRevision++;
+    setSession(u,role);save();
+  };
+  S.setProjectLinks = (projectId,links) => {
+    const p=S.project(projectId);if(!S.canSeeProject(p)||S.role()==='partner')throw new Error('Project access required.');
+    const clean={};
+    for(const kind of ['github','drive']) {
+      const value=String(links[kind] || '').trim();if(!value){clean[kind]='';continue;}
+      let url;try{url=new URL(value);}catch(error){throw new Error('Enter a valid '+kind+' link.');}
+      const domains=kind==='github'?['github.com']:['drive.google.com','docs.google.com'];
+      if(url.protocol!=='https:' || url.username || url.password || !domains.includes(url.hostname))throw new Error('Use an HTTPS '+kind+' link on its official domain.');
+      clean[kind]=url.href;
+    }
+    p.links=clean;S.log(S.me().id,'updated workspace links for “'+p.title+'”',projectId);save();
+  };
   S.changePassword = async (oldPassword, password) => {
     const u = S.me();
     if (!u) throw new Error('Please sign in.');
@@ -513,7 +530,7 @@ window.RCP = window.RCP || {};
     S.isRemote=()=>true;S.session=()=>remoteSession;S.me=()=>remoteSession?S.user(remoteSession.userId):null;S.role=()=>remoteSession?.role || null;S.storesFilesDurably=()=>true;
     S.login=async(username,password)=>{const result=await request('login',{username,password});applyRemote(result);return S.me();};
     S.signOut=async()=>{await request('logout',{});remoteSession=null;db=RCP.seed();};
-    const methods=['changePassword','signIn','manageAccount','resetPassword','setProjectMembers','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
+    const methods=['skipPasswordChange','setProjectLinks','changePassword','signIn','manageAccount','resetPassword','setProjectMembers','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
     for(const method of methods) S[method]=async(...args)=>{const result=await request('action',{method,args});applyRemote(result);return result.result?.id ? (S.project(result.result.id)||S.posting(result.result.id)||S.user(result.result.id)||result.result) : result.result;};
     for(const method of ['addFile','addPostingFile']) S[method]=async(...args)=>{const f=args[1],bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));args[1]={name:f.name,type:f.type,content:btoa(binary)};const result=await request('action',{method,args});applyRemote(result);return result.result;};
     S.getFile=async id=>{const response=await fetch('/api/files/'+encodeURIComponent(id),{credentials:'same-origin'});if(!response.ok)throw new Error('File unavailable for your account.');const f=db.projects.flatMap(p=>p.files).find(f=>f.id===id);return new Blob([await response.arrayBuffer()],{type:f?.type || 'application/octet-stream'});};
