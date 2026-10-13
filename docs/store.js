@@ -22,7 +22,7 @@ window.RCP = window.RCP || {};
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) {
         if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
-        return RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)))));
+        return RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed))))));
       }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());

@@ -513,3 +513,15 @@ RCP.applyCalendarProposal = function(db) {
   };
   RCP.seed=()=>RCP.addWorkspaceLinks(seed());
 })();
+
+// Disney was confirmed as already underway; this does not imply an approval or result.
+(() => {
+  const seed=RCP.seed;
+  RCP.markDisneyUnderway = db => {
+    if(db.disneyUnderwayRevision===1)return db;
+    const ids=['p-disney','p-disney-camera','p-disney-sensors','p-disney-console'];
+    for(const p of db.projects)if(ids.includes(p.id)&&p.status==='draft')p.status='active';
+    db.disneyUnderwayRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.markDisneyUnderway(seed());
+})();

@@ -28,7 +28,7 @@ Four workspaces were derived from the supplied Software folder:
 3. Railway sensor and gauge integration — `RPi5/SYSTEM_CONSOLE.md` and supporting notes.
 4. Railway system console and evidence — `RPi5/SYSTEM_CONSOLE.md` and hardware preparation notes.
 
-All remain drafts with no invented approvals, field trials or completed results. The source's outstanding validation requirements remain explicit. Each workspace contains a labelled synthetic trial README and checklist CSV: **eight trial files**, with no real field measurements or credentials.
+The four Disney workstreams are active, reflecting confirmation that the project is already underway. No approvals, field trials or completed results have been invented. The source's outstanding validation requirements remain explicit. Each workspace contains a labelled synthetic trial README and checklist CSV: **eight trial files**, with no real field measurements or credentials.
 
 The private local import contains **nine original documents**: the two subsystem READMEs, replay CSV, clearance-envelope and maintenance-vehicle PDFs, D6 protocol notes, gauge-mount defaults, system-console notes and pre-hardware notes. No configuration, environment secrets, model files, photographs or full source tree were copied. Originals remain in `.private-pilot/` and are excluded from Git and GitHub Pages. The source folder was read only and was not modified.
 
