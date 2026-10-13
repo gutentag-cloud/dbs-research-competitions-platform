@@ -99,8 +99,8 @@
     <section class="panel"><p>${u.mustChangePassword ? 'Change your password, or continue with the default password.' : 'Change your password here.'}</p>
     <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form>${u.mustChangePassword ? html`<button class="btn ghost" data-act="skip-password">Continue with default password</button>` : ''}<p class="small muted">At least 12 characters. ${S.isRemote() ? 'Accounts are saved on the private server.' : 'This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.'}</p></section>`;
   }
-  function phaseField(p) {
-    return p.phases?.length ? html`<label class="field"><span>Project phase</span><select name="phaseId"><option value="">Whole project</option>${p.phases.map(phase=>html`<option value="${phase.id}">Phase ${phase.number} · ${phase.title}</option>`)}</select></label>` : '';
+  function phaseField(p,selected=null) {
+    return p.phases?.length ? html`<label class="field"><span>Project phase</span><select name="phaseId"><option value="">Whole project</option>${p.phases.map(phase=>html`<option value="${phase.id}" ${selected===phase.id ? 'selected' : ''}>Phase ${phase.number} · ${phase.title}</option>`)}</select></label>` : '';
   }
   function projectLinks(p) {
     return html`<div class="row">${p.links?.github ? html`<a class="btn small ghost" href="${p.links.github}" target="_blank" rel="noopener noreferrer">Open GitHub ↗</a>` : ''}${p.links?.drive ? html`<a class="btn small ghost" href="${p.links.drive}" target="_blank" rel="noopener noreferrer">Open Google Drive ↗</a>` : ''}</div>`;
@@ -114,6 +114,7 @@
     <fieldset><legend>Assigned roles</legend>${Object.entries(ROLE_LABEL).map(([r,label]) => html`<label class="check"><input type="checkbox" name="roles" value="${r}" ${u && u.roles.includes(r) ? 'checked' : ''}> ${label}</label>`)}</fieldset>
     <fieldset><legend>Partner project access</legend>${S.db.projects.map(p => html`<label class="check"><input type="checkbox" name="projectIds" value="${p.id}" ${u && (u.projectIds || []).includes(p.id) ? 'checked' : ''}> ${p.title}</label>`)}</fieldset>
     <label class="check"><input type="checkbox" name="fullWorkspaceAccess" ${u?.fullWorkspaceAccess ? 'checked' : ''}> Partner can read the entire assigned workspace, including all project documents</label>
+    <label class="check"><input type="checkbox" name="workspaceCollaborator" ${u?.workspaceCollaborator ? 'checked' : ''}> Partner can add and edit progress logs, upload files, and manage task deadlines in assigned workspaces</label>
     <label class="check"><input type="checkbox" name="active" ${!u || u.active !== false ? 'checked' : ''}> Account enabled</label>`;
   }
   function viewAccounts() {
@@ -380,6 +381,7 @@
     if (!canSee(p, me, role)) return empty('You can only open projects you are part of.', '#/', 'Back');
     const isMember = p.members.includes(me.id);
     const isMentor = S.mentors(p).includes(me.id);
+    const canWrite = S.canCollaborate(p), canDeadline = S.canSetDeadlines(p);
     const due = S.logDue(p);
     const comp = p.competitionId ? S.comp(p.competitionId) : null;
     const today = todayIso();
@@ -421,11 +423,13 @@
                 <div class="tl-head"><b>${date(l.date)}</b><span class="muted small">${S.displayName(l.by)} · ${ago(l.at)}</span></div>
                 <p class="small muted">${l.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===l.phaseId)?.number || '—') : 'Project update'}</p><p class="pre">${l.text}</p>
                 ${l.files.length ? html`<div class="files-inline">${l.files.map((fid) => fileById[fid] ? html`<button class="file-chip" data-act="download" data-file="${fid}">${fileById[fid].name}</button>` : '')}</div>` : ''}
+                ${l.editedAt ? html`<p class="small muted">Edited by ${S.displayName(l.editedBy)} · ${ago(l.editedAt)}</p>` : ''}
+                ${canWrite ? html`<details><summary>Edit progress log</summary><form data-form="edit-log" data-project="${p.id}" data-log="${l.id}"><label class="field"><span>Log date</span><input type="date" name="date" value="${l.date}" required></label>${phaseField(p,l.phaseId)}<label class="field"><span>Progress update</span><textarea name="text" rows="4" required>${l.text}</textarea></label><button class="btn small">Save changes</button></form></details>` : ''}
                 ${l.comments.map((c) => html`<div class="comment">${avatar(c.by)}<div><b>${S.displayName(c.by)}</b> <span class="muted small">${ago(c.at)}</span><p>${c.text}</p></div></div>`)}
-                ${isMentor || role === 'committee' || p.teacherId === me.id ? html`
+                ${canWrite ? html`
                   <form class="comment-form" data-form="comment" data-log="${l.id}"><input name="text" placeholder="Leave feedback" aria-label="Feedback on this log" required maxlength="600"><button class="btn small">Send</button></form>` : ''}
               </li>`)}</ol>` : html`<p class="muted">No logs yet.</p>`}
-            ${isMember && p.status === 'active' ? html`
+            ${canWrite && p.status === 'active' ? html`
               <form class="log-form" data-form="log">
                 <h4>Add a progress log</h4>${phaseField(p)}
                 <div class="row"><label class="field"><span>Log date</span><input type="date" name="date" value="${today}" required></label>
@@ -453,14 +457,14 @@
             <h3>Deadlines</h3>
             ${(() => { const ds = S.deadlinesFor(p.id); return ds.length ? html`<ul class="plain small deadlines">${ds.map((d) => html`<li>
               <span class="deadline-date ${d.date < today ? 'tone-bad-text' : ''}">${date(d.date)}</span> <b>${d.title}</b> <span class="muted">· ${S.displayName(d.by)}</span>
-              ${d.by === me.id ? html`<button class="link tone-bad-text" data-act="del-deadline" data-id="${d.id}">Remove</button>` : ''}</li>`)}</ul>` : html`<p class="muted small">No dates set for this project yet.</p>`; })()}
-            ${isMentor || p.teacherId === me.id ? html`
+              ${canDeadline ? html`<button class="link tone-bad-text" data-act="del-deadline" data-id="${d.id}">Remove</button>` : ''}</li>`)}</ul>` : html`<p class="muted small">No dates set for this project yet.</p>`; })()}
+            ${canDeadline ? html`
               <form class="deadline-form" data-form="add-deadline" data-project="${p.id}">
                 <div class="row"><label class="field grow"><span>Deadline</span><input name="title" required maxlength="80" placeholder="e.g. Draft report to mentor"></label>
                 <label class="field"><span>Date</span><input type="date" name="date" required></label></div>
                 <button class="btn small">Add deadline</button>
               </form>
-              <p class="muted small">Added to the team's Mail and marked on the shared calendar. Only the mentor and teacher-in-charge can set dates here.</p>` : html`<p class="muted small">Dates are set by the mentor or the teacher-in-charge.</p>`}
+              <p class="muted small">Added to the team's Mail and marked on the shared calendar. Assigned mentors, the teacher and the project partner can set task deadlines here.</p>` : html`<p class="muted small">Task deadlines are set by assigned mentors, the teacher or the project partner.</p>`}
           </div>
 
           <div class="panel">
@@ -473,9 +477,9 @@
           </div>
 
           <div class="panel">
-            <h3>Files</h3>${S.isRemote() ? html`<p class="small muted">Private server storage. Downloads require your assigned project account.</p>` : html`<p class="small muted">Public trial files only. Original project files are available in the private local workspace.</p>`}
+            <h3>Files</h3>${S.isRemote() ? html`<p class="small muted">Private server storage. Downloads require your assigned project account.</p>` : html`<p class="small muted">Original project files are available in the private local workspace.</p>`}
             ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===f.phaseId)?.number || '—') + ' · ' : ''}${f.trial ? 'Trial · synthetic · ' : ''}${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
-            ${isMember || isMentor || role === 'committee' ? html`
+            ${canWrite ? html`
               <form data-form="upload" class="upload">${phaseField(p)}
                 <select name="category" aria-label="File type">${RCP.FILE_CATEGORIES.map((c) => html`<option>${c}</option>`)}</select>
                 <input type="file" name="file" required>
@@ -1011,7 +1015,7 @@
       switch (form.dataset.form) {
         case 'login': await S.login(fd.get('username'),fd.get('password')); wizard=null;location.hash='#/';route();return;
         case 'password': if(fd.get('password') !== fd.get('confirm')) throw new Error('Passwords do not match.');await S.changePassword(fd.get('current'),fd.get('password'));notify('Password updated.');location.hash='#/';route();return;
-        case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active'),fullWorkspaceAccess:fd.has('fullWorkspaceAccess')});notify('Account access saved. New accounts use their username as the default password.');break;
+        case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active'),fullWorkspaceAccess:fd.has('fullWorkspaceAccess'),workspaceCollaborator:fd.has('workspaceCollaborator')});notify('Account access saved. New accounts use their username as the default password.');break;
         case 'project-links': await S.setProjectLinks(projectId,{github:fd.get('github'),drive:fd.get('drive')});notify('Workspace links saved.');break;
         case 'project-members': await S.setProjectMembers(projectId,fd.getAll('members'));notify('Project participants updated.');break;
         case 'share-file': await S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
@@ -1040,6 +1044,7 @@
           notify('Log posted.');
           break;
         }
+        case 'edit-log': await S.editLog(projectId,form.dataset.log,me.id,fd.get('date'),fd.get('text'),fd.get('phaseId')||null);notify('Progress log updated.');break;
         case 'comment': await S.comment(projectId, form.dataset.log, me.id, fd.get('text')); notify('Feedback sent to the team.'); break;
         case 'add-deadline': await S.addDeadline(projectId, fd.get('title'), fd.get('date'), me.id); notify('Deadline added; the team has been notified in Mail.'); break;
         case 'upload': { const f = fd.get('file'); if (!f || !f.size) throw new Error('Choose a file first.'); await S.addFile(projectId, f, fd.get('category'), me.id, fd.get('phaseId') || null); notify(`Uploaded ${f.name}.`); break; }

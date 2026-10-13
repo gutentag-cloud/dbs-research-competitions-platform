@@ -2,7 +2,7 @@
 
 The original school-branded UI remains. There are now two modes:
 
-- **GitHub Pages:** public synthetic trial documents and high-level project summaries. Browser account controls demonstrate the workflow; they cannot hide material included in the public source.
+- **GitHub Pages:** high-level project summaries. Browser account controls demonstrate the workflow; they cannot hide material included in the public source.
 - **Private backend:** the same UI served by `server.cjs`, with shared SQLite state, server-checked accounts/project membership and private file downloads. The local server binds to localhost by default. This is prepared for a later VPS move; it has not been deployed on a VPS.
 
 ## Private local workspace
@@ -28,7 +28,7 @@ Four phases of one Disney project were derived from the supplied Software folder
 3. Railway sensor and gauge integration — `RPi5/SYSTEM_CONSOLE.md` and supporting notes.
 4. Railway system console and evidence — `RPi5/SYSTEM_CONSOLE.md` and hardware preparation notes.
 
-The Disney project is active, reflecting confirmation that the project is already underway. No approvals, field trials or completed results have been invented. The source's outstanding validation requirements remain explicit. Each phase contains a labelled synthetic trial README and checklist CSV: **eight trial files**, with no real field measurements or credentials.
+The Disney project is active, reflecting confirmation that the project is already underway. No approvals, field trials or completed results have been invented. The source's outstanding validation requirements remain explicit. The eight synthetic trial files have been removed. The nine original documents remain in private storage, grouped by phase.
 
 The private local import contains **nine original documents**: the two subsystem READMEs, replay CSV, clearance-envelope and maintenance-vehicle PDFs, D6 protocol notes, gauge-mount defaults, system-console notes and pre-hardware notes. No configuration, environment secrets, model files, photographs or full source tree were copied. Originals remain in `.private-pilot/` and are excluded from Git and GitHub Pages. The source folder was read only and was not modified.
 
@@ -82,6 +82,6 @@ The first-login password choice is optional in both public prototype and private
 
 ## Disney partner workspace access
 
-The pilot Disney account uses username `Disney` and default password `Disney`. It has full read access to the Disney project and all four phases: project details, team, deadlines, progress logs and every project document, including experience evidence. It cannot access PwC or change accounts, participants, links or project records. Other partner accounts continue to receive only selected documents unless the committee enables full workspace access under Accounts. Full access is always limited to the selected projects; removing a project or suspending the account revokes access. Google Drive/GitHub permissions remain separate. Public Pages is a browser prototype; server-enforced protection and original files require the private backend.
+The pilot Disney account uses username `Disney` and default password `Disney`. It has full access to the Disney project and all four phases: project details, team, deadlines, progress logs and every project document, including experience evidence. It cannot access PwC or change accounts, participants, links. It can add and edit progress logs, add feedback, upload project files and set or remove task deadlines. Log edits preserve the original author and revision history. Other partner accounts continue to receive only selected documents unless the committee enables full workspace access under Accounts. Full access is always limited to the selected projects; removing a project or suspending the account revokes access. Google Drive/GitHub permissions remain separate. Public Pages is a browser prototype; server-enforced protection and original files require the private backend.
 
 Isaac and Fergus Tam are assigned to the Disney project and all four phases. Fergus Tam has a mentor account with default username and password `Fergus Tam`. No teacher endorsement, committee decision or completed result is inferred from that confirmation.

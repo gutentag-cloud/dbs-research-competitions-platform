@@ -576,3 +576,16 @@ RCP.applyCalendarProposal = function(db) {
   };
   RCP.seed=()=>RCP.mergeDisneyPhases(seed());
 })();
+
+(() => {
+  const seed=RCP.seed;
+  RCP.enableDisneyCollaboration = db => {
+    if(db.disneyCollaborationRevision===1)return db;
+    const u=db.users.find(u=>u.id==='disney-partner');
+    if(u){u.workspaceCollaborator=true;u.authRevision++;}
+    const trialIds=new Set(['p-disney','p-disney-camera','p-disney-sensors','p-disney-console'].flatMap(id=>[id+'-trial-readme',id+'-trial-checklist']));
+    for(const p of db.projects){p.files=p.files.filter(f=>!trialIds.has(f.id));for(const log of p.logs)log.files=(log.files||[]).filter(id=>!trialIds.has(id));}
+    db.disneyCollaborationRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.enableDisneyCollaboration(seed());
+})();

@@ -22,7 +22,7 @@ window.RCP = window.RCP || {};
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) {
         if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
-        return RCP.mergeDisneyPhases(RCP.assignDisneyMentors(RCP.addDisneyPartner(RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)))))))));
+        return RCP.enableDisneyCollaboration(RCP.mergeDisneyPhases(RCP.assignDisneyMentors(RCP.addDisneyPartner(RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed))))))))));
       }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
@@ -122,7 +122,7 @@ window.RCP = window.RCP || {};
     if (u && u.roles.includes('committee') && (!data.active || !roles.includes('committee')) && !db.users.some(x => x.id !== u.id && x.active !== false && x.roles.includes('committee'))) throw new Error('Keep at least one active committee account.');
     if (!u) {u={id:uid('u'),name:username,email:'',username,authRevision:1,mustChangePassword:true};db.users.push(u);}
     if (u.username !== username && !u.passwordHash) u.mustChangePassword=true;
-    Object.assign(u,{username,name:username,roles,active:data.active,projectIds,fullWorkspaceAccess:roles.includes('partner') && data.fullWorkspaceAccess === true}); u.authRevision++;
+    Object.assign(u,{username,name:username,roles,active:data.active,projectIds,fullWorkspaceAccess:roles.includes('partner') && data.fullWorkspaceAccess === true,workspaceCollaborator:roles.includes('partner') && data.fullWorkspaceAccess === true && data.workspaceCollaborator === true}); u.authRevision++;
     for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
     S.log(S.me().id, 'updated account access for '+username);save();return u;
   };
@@ -134,6 +134,8 @@ window.RCP = window.RCP || {};
     S.log(S.me().id,'reset the default password for '+u.username);save();
   };
   S.canSeeProject = (p, user=S.me(), role=S.role()) => !!(p && user && (user.roles.includes('student') ? p.members.includes(user.id) : role === 'partner' ? (user.projectIds || []).includes(p.id) : role === 'committee' || p.members.includes(user.id) || p.teacherId === user.id || S.mentors(p).includes(user.id)));
+  S.canCollaborate = p => !!(S.me() && !S.me().mustChangePassword && S.canSeeProject(p) && (S.role()==='partner' ? S.me().fullWorkspaceAccess===true && S.me().workspaceCollaborator===true : S.role()==='committee' || p.members.includes(S.me().id) || S.mentors(p).includes(S.me().id) || p.teacherId===S.me().id));
+  S.canSetDeadlines = p => S.canCollaborate(p) && (S.role()==='partner' || S.role()==='committee' || S.mentors(p).includes(S.me().id) || p.teacherId===S.me().id);
   S.setProjectMembers = (projectId, ids) => {
     committeeOnly();const p=S.project(projectId);
     if(!p || ids.some(id => !S.user(id)?.roles.includes('student') || S.user(id).active === false)) throw new Error('Select active student accounts.');
@@ -215,7 +217,7 @@ window.RCP = window.RCP || {};
   S.addDeadline = function (projectId, title, date, by) {
     const p = S.project(projectId);
     if (!p) throw new Error('Project not found.');
-    if (!S.mentors(p).includes(by) && p.teacherId !== by) throw new Error('Only the mentor or the teacher-in-charge of this project can set its deadlines.');
+    if (!S.canSetDeadlines(p) || by!==S.me().id) throw new Error('Project deadline access required.');
     title = String(title || '').trim();
     if (!title || !date) throw new Error('Give the deadline a name and a date.');
     (db.customDates ||= []).push({ id: uid('d'), projectId, title: title.slice(0, 80), date, by, createdAt: nowIso() });
@@ -227,7 +229,7 @@ window.RCP = window.RCP || {};
     const d = (db.customDates || []).find((x) => x.id === id);
     if (!d) return;
     const p = S.project(d.projectId);
-    if (d.by !== by && !S.mentors(p).includes(by) && p.teacherId !== by) throw new Error('You can only remove deadlines you set for your own project.');
+    if (!S.canSetDeadlines(p) || by!==S.me().id) throw new Error('Project deadline access required.');
     db.customDates = db.customDates.filter((x) => x.id !== id);
     S.log(by, 'removed the deadline “' + d.title + '” from ' + p.title, d.projectId);
     save();
@@ -328,7 +330,9 @@ window.RCP = window.RCP || {};
 
   S.addLog = function (id, by, date, text, fileIds, phaseId=null) {
     const p = S.project(id);
-    if (!S.canSeeProject(p) || S.role() === 'partner' || by !== S.me().id) throw new Error('Project access required.');
+    if (!S.canCollaborate(p) || by !== S.me().id) throw new Error('Project collaboration access required.');
+    if(!String(text||'').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Give the log a date and an update.');
+    if((fileIds||[]).some(id=>!p.files.some(f=>f.id===id)))throw new Error('Attach files from this project.');
     if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
     p.logs.push({ id: uid('l'), phaseId, date, by, at: nowIso(), text: text.trim(), files: fileIds || [], comments: [] });
     p.logs.sort((a, b) => a.date.localeCompare(b.date) || a.at.localeCompare(b.at));
@@ -337,9 +341,21 @@ window.RCP = window.RCP || {};
     S.log(by, `posted a progress log dated ${date} for “${p.title}”`, p.id);
   };
 
+  S.editLog = function(projectId,logId,by,date,text,phaseId=null) {
+    const p=S.project(projectId),log=p?.logs.find(l=>l.id===logId);
+    if(!S.canCollaborate(p) || by!==S.me().id || !log)throw new Error('Project collaboration access required.');
+    if(!String(text||'').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Give the log a date and an update.');
+    if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
+    (log.edits ||= []).push({by,at:nowIso(),previous:{date:log.date,text:log.text,phaseId:log.phaseId||null}});
+    Object.assign(log,{date,text:String(text).trim(),phaseId,editedBy:by,editedAt:nowIso()});
+    p.logs.sort((a,b)=>a.date.localeCompare(b.date)||a.at.localeCompare(b.at));
+    S.log(by,'edited a progress log for “'+p.title+'”',projectId);
+  };
   S.comment = function (projectId, logId, by, text) {
     const p = S.project(projectId);
+    if(!S.canCollaborate(p) || by!==S.me().id)throw new Error('Project collaboration access required.');
     const l = p.logs.find((x) => x.id === logId);
+    if(!l)throw new Error('Log not found.');
     l.comments.push({ by, at: nowIso(), text: text.trim() });
     S.mail(p.members, `Feedback on your log`, `${S.displayName(by)}: ${text.trim()}`, { label: 'Open project', href: `#/project/${p.id}` });
     S.log(by, `commented on the ${l.date} log of “${p.title}”`, p.id);
@@ -453,7 +469,7 @@ window.RCP = window.RCP || {};
   };
 
   S.addFile = async function (projectId, file, category, by, phaseId=null) {
-    if (!S.canSeeProject(S.project(projectId)) || S.role() === 'partner' || by !== S.me().id) throw new Error('Only the assigned project team can upload files.');
+    if (!S.canCollaborate(S.project(projectId)) || by !== S.me().id) throw new Error('Only the assigned project team can upload files.');
     const p = S.project(projectId);
     if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
     const id = await putBlob(file);
@@ -536,7 +552,7 @@ window.RCP = window.RCP || {};
     S.isRemote=()=>true;S.session=()=>remoteSession;S.me=()=>remoteSession?S.user(remoteSession.userId):null;S.role=()=>remoteSession?.role || null;S.storesFilesDurably=()=>true;
     S.login=async(username,password)=>{const result=await request('login',{username,password});applyRemote(result);return S.me();};
     S.signOut=async()=>{await request('logout',{});remoteSession=null;db=RCP.seed();};
-    const methods=['skipPasswordChange','setProjectLinks','changePassword','signIn','manageAccount','resetPassword','setProjectMembers','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
+    const methods=['skipPasswordChange','setProjectLinks','changePassword','signIn','manageAccount','resetPassword','setProjectMembers','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','editLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
     for(const method of methods) S[method]=async(...args)=>{const result=await request('action',{method,args});applyRemote(result);return result.result?.id ? (S.project(result.result.id)||S.posting(result.result.id)||S.user(result.result.id)||result.result) : result.result;};
     for(const method of ['addFile','addPostingFile']) S[method]=async(...args)=>{const f=args[1],bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));args[1]={name:f.name,type:f.type,content:btoa(binary)};const result=await request('action',{method,args});applyRemote(result);return result.result;};
     S.getFile=async id=>{const response=await fetch('/api/files/'+encodeURIComponent(id),{credentials:'same-origin'});if(!response.ok)throw new Error('File unavailable for your account.');const f=db.projects.flatMap(p=>p.files).find(f=>f.id===id);return new Blob([await response.arrayBuffer()],{type:f?.type || 'application/octet-stream'});};
