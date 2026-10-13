@@ -525,3 +525,54 @@ RCP.applyCalendarProposal = function(db) {
   };
   RCP.seed=()=>RCP.markDisneyUnderway(seed());
 })();
+
+// Confirmed Disney partner scope: full read access to its own workstreams only.
+(() => {
+  const seed=RCP.seed;
+  RCP.addDisneyPartner = db => {
+    if(db.disneyPartnerRevision===1)return db;
+    const projectIds=['p-disney','p-disney-camera','p-disney-sensors','p-disney-console'];
+    for(const p of db.projects)if(projectIds.includes(p.id)){p.mentorAssigned=true;p.checklist.mentor=true;}
+    if(!db.users.some(u=>(u.username||'').toLowerCase()==='disney'))db.users.push({id:'disney-partner',name:'Disney',username:'Disney',email:'',roles:['partner'],projectIds,fullWorkspaceAccess:true,active:true,authRevision:1,mustChangePassword:true});
+    db.disneyPartnerRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.addDisneyPartner(seed());
+})();
+
+(() => {
+  const seed=RCP.seed;
+  RCP.assignDisneyMentors = db => {
+    if(db.disneyMentorRevision===1)return db;
+    let fergus=db.users.find(u=>(u.username||u.name).toLowerCase()==='fergus tam');
+    if(!fergus){fergus={id:'fergus-tam',name:'Fergus Tam',username:'Fergus Tam',roles:['mentor'],email:'',active:true,authRevision:1,mustChangePassword:true};db.users.push(fergus);}
+    for(const p of db.projects)if(['p-disney','p-disney-camera','p-disney-sensors','p-disney-console'].includes(p.id)){p.mentorId='isaac';p.mentorIds=['isaac',fergus.id];p.mentorAssigned=true;p.checklist.mentor=true;}
+    db.disneyMentorRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.assignDisneyMentors(seed());
+})();
+
+// One Disney project with four phases; preserve file IDs and private blob locations.
+(() => {
+  const seed=RCP.seed;
+  RCP.mergeDisneyPhases = db => {
+    if(db.disneyPhasesRevision===1)return db;
+    const ids=['p-disney','p-disney-camera','p-disney-sensors','p-disney-console'];
+    const project=db.projects.find(p=>p.id==='p-disney');
+    if(!project)return db;
+    project.phases=ids.map((id,i)=>{const old=db.projects.find(p=>p.id===id);return {id,number:i+1,title:old?.title||['Railway LiDAR intrusion detection','Railway camera detection','Railway sensor and gauge integration','Railway system console and evidence'][i],abstract:old?.abstract||'',sourceReference:old?.sourceReference||'',links:old?.links||{}};});
+    for(const id of ids){const old=db.projects.find(p=>p.id===id);if(!old)continue;
+      for(const f of old.files){f.phaseId ||= id;if(!project.files.some(x=>x.id===f.id))project.files.push(f);}
+      for(const log of old.logs){log.phaseId ||= id;if(!project.logs.some(x=>x.id===log.id))project.logs.push(log);}
+      project.members=[...new Set([...project.members,...old.members])];
+    }
+    project.title='Hong Kong Disneyland railway research & development';
+    project.abstract='One ongoing Disney railway R&D project with four phases: LiDAR intrusion detection, camera detection, sensor and gauge integration, and the system console and evidence.';
+    project.sourceReference='Software/';
+    project.logs.sort((a,b)=>a.date.localeCompare(b.date)||a.at.localeCompare(b.at));
+    db.projects=db.projects.filter(p=>!ids.slice(1).includes(p.id));
+    for(const u of db.users)if((u.projectIds||[]).some(id=>ids.slice(1).includes(id))){u.projectIds=[...new Set(u.projectIds.map(id=>ids.includes(id)?'p-disney':id))];u.authRevision=(u.authRevision||1)+1;}
+    for(const list of [db.customDates,db.audit,db.mail])for(const item of list||[]){if(ids.includes(item.projectId))item.projectId='p-disney';for(const id of ids.slice(1))if(item.action?.href)item.action.href=item.action.href.replace('#/project/'+id,'#/project/p-disney');}
+    db.disneyPhasesRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.mergeDisneyPhases(seed());
+})();

@@ -22,7 +22,7 @@ window.RCP = window.RCP || {};
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) {
         if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
-        return RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed))))));
+        return RCP.mergeDisneyPhases(RCP.assignDisneyMentors(RCP.addDisneyPartner(RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)))))))));
       }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
@@ -50,6 +50,8 @@ window.RCP = window.RCP || {};
       return u.form ? `${u.name} (${u.form})` : u.initials ? `${u.name} (${u.initials})` : u.name;
     },
   };
+
+  S.mentors = p => [...new Set([p.mentorId,...(p.mentorIds || [])].filter(Boolean))];
 
   // ---------- session ----------
   S.session = function () {
@@ -120,7 +122,7 @@ window.RCP = window.RCP || {};
     if (u && u.roles.includes('committee') && (!data.active || !roles.includes('committee')) && !db.users.some(x => x.id !== u.id && x.active !== false && x.roles.includes('committee'))) throw new Error('Keep at least one active committee account.');
     if (!u) {u={id:uid('u'),name:username,email:'',username,authRevision:1,mustChangePassword:true};db.users.push(u);}
     if (u.username !== username && !u.passwordHash) u.mustChangePassword=true;
-    Object.assign(u,{username,name:username,roles,active:data.active,projectIds}); u.authRevision++;
+    Object.assign(u,{username,name:username,roles,active:data.active,projectIds,fullWorkspaceAccess:roles.includes('partner') && data.fullWorkspaceAccess === true}); u.authRevision++;
     for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
     S.log(S.me().id, 'updated account access for '+username);save();return u;
   };
@@ -131,7 +133,7 @@ window.RCP = window.RCP || {};
     for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
     S.log(S.me().id,'reset the default password for '+u.username);save();
   };
-  S.canSeeProject = (p, user=S.me(), role=S.role()) => !!(p && user && (user.roles.includes('student') ? p.members.includes(user.id) : role === 'committee' || p.members.includes(user.id) || p.teacherId === user.id || p.mentorId === user.id || role === 'partner' && (user.projectIds || []).includes(p.id)));
+  S.canSeeProject = (p, user=S.me(), role=S.role()) => !!(p && user && (user.roles.includes('student') ? p.members.includes(user.id) : role === 'partner' ? (user.projectIds || []).includes(p.id) : role === 'committee' || p.members.includes(user.id) || p.teacherId === user.id || S.mentors(p).includes(user.id)));
   S.setProjectMembers = (projectId, ids) => {
     committeeOnly();const p=S.project(projectId);
     if(!p || ids.some(id => !S.user(id)?.roles.includes('student') || S.user(id).active === false)) throw new Error('Select active student accounts.');
@@ -140,7 +142,7 @@ window.RCP = window.RCP || {};
   S.canReadFile = id => {
     const u = S.me(), role = S.role(); if (!u || u.mustChangePassword) return false;
     const p = db.projects.find(p => p.files.some(f => f.id === id));
-    if (p) return S.canSeeProject(p,u,role) && (role === 'partner' ? (u.projectIds || []).includes(p.id) && p.files.some(f => f.id === id && (f.partnerIds || []).includes(u.id) && f.category !== 'Experience evidence') : role === 'committee' || p.members.includes(u.id) || p.teacherId === u.id || p.mentorId === u.id);
+    if (p) return S.canSeeProject(p,u,role) && (role === 'partner' ? (u.projectIds || []).includes(p.id) && (u.fullWorkspaceAccess === true || p.files.some(f => f.id === id && (f.partnerIds || []).includes(u.id) && f.category !== 'Experience evidence')) : role === 'committee' || p.members.includes(u.id) || p.teacherId === u.id || S.mentors(p).includes(u.id));
     return role !== 'partner' && db.postings.some(o => (o.files || []).some(f => f.id === id));
   };
   S.shareFile = (projectId,fileId,ids) => {
@@ -213,7 +215,7 @@ window.RCP = window.RCP || {};
   S.addDeadline = function (projectId, title, date, by) {
     const p = S.project(projectId);
     if (!p) throw new Error('Project not found.');
-    if (p.mentorId !== by && p.teacherId !== by) throw new Error('Only the mentor or the teacher-in-charge of this project can set its deadlines.');
+    if (!S.mentors(p).includes(by) && p.teacherId !== by) throw new Error('Only the mentor or the teacher-in-charge of this project can set its deadlines.');
     title = String(title || '').trim();
     if (!title || !date) throw new Error('Give the deadline a name and a date.');
     (db.customDates ||= []).push({ id: uid('d'), projectId, title: title.slice(0, 80), date, by, createdAt: nowIso() });
@@ -225,7 +227,7 @@ window.RCP = window.RCP || {};
     const d = (db.customDates || []).find((x) => x.id === id);
     if (!d) return;
     const p = S.project(d.projectId);
-    if (d.by !== by && p.mentorId !== by && p.teacherId !== by) throw new Error('You can only remove deadlines you set for your own project.');
+    if (d.by !== by && !S.mentors(p).includes(by) && p.teacherId !== by) throw new Error('You can only remove deadlines you set for your own project.');
     db.customDates = db.customDates.filter((x) => x.id !== id);
     S.log(by, 'removed the deadline “' + d.title + '” from ' + p.title, d.projectId);
     save();
@@ -315,20 +317,23 @@ window.RCP = window.RCP || {};
 
   S.assignMentor = function (id, mentorId, by, quiet) {
     const p = S.project(id);
-    p.mentorId = mentorId;
+    const ids=Array.isArray(mentorId)?mentorId:[mentorId];
+    if(!ids.length || ids.some(id=>!S.user(id)?.roles.includes('mentor') || S.user(id).active===false))throw new Error('Choose active mentor accounts.');
+    p.mentorIds=[...new Set(ids)];p.mentorId=p.mentorIds[0];
     p.checklist.mentor = true;
-    S.mail(mentorId, `You're mentoring “${p.title}”`, `Assigned by ${S.displayName(by)}. Team: ${p.members.map(S.displayName).join(', ')}.`, { label: 'Open project page', href: `#/project/${p.id}` });
-    if (!quiet) S.log(by, `assigned mentor ${S.displayName(mentorId)} to “${p.title}”`, p.id);
+    S.mail(p.mentorIds, `You're mentoring “${p.title}”`, `Assigned by ${S.displayName(by)}. Team: ${p.members.map(S.displayName).join(', ')}.`, { label: 'Open project page', href: `#/project/${p.id}` });
+    if (!quiet) S.log(by, `assigned mentor ${p.mentorIds.map(S.displayName).join(', ')} to “${p.title}”`, p.id);
     save();
   };
 
-  S.addLog = function (id, by, date, text, fileIds) {
+  S.addLog = function (id, by, date, text, fileIds, phaseId=null) {
     const p = S.project(id);
     if (!S.canSeeProject(p) || S.role() === 'partner' || by !== S.me().id) throw new Error('Project access required.');
-    p.logs.push({ id: uid('l'), date, by, at: nowIso(), text: text.trim(), files: fileIds || [], comments: [] });
+    if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
+    p.logs.push({ id: uid('l'), phaseId, date, by, at: nowIso(), text: text.trim(), files: fileIds || [], comments: [] });
     p.logs.sort((a, b) => a.date.localeCompare(b.date) || a.at.localeCompare(b.at));
     p.checklist.logs = true;
-    if (p.mentorId) S.mail(p.mentorId, `New progress log: ${p.title}`, `${S.displayName(by)} posted an update dated ${date}.`, { label: 'Read log', href: `#/project/${p.id}` });
+    if (p.mentorId) S.mail(S.mentors(p), `New progress log: ${p.title}`, `${S.displayName(by)} posted an update dated ${date}.`, { label: 'Read log', href: `#/project/${p.id}` });
     S.log(by, `posted a progress log dated ${date} for “${p.title}”`, p.id);
   };
 
@@ -344,7 +349,7 @@ window.RCP = window.RCP || {};
     const p = S.project(id);
     p.status = 'submitted';
     p.checklist.final = true;
-    S.mail(['committee', p.teacherId, p.mentorId].filter(Boolean), `Final submission: ${p.title}`, `${S.displayName(by)} marked the final submission as done.`, { label: 'Open project', href: `#/project/${p.id}` });
+    S.mail(['committee', p.teacherId, ...S.mentors(p)].filter(Boolean), `Final submission: ${p.title}`, `${S.displayName(by)} marked the final submission as done.`, { label: 'Open project', href: `#/project/${p.id}` });
     S.log(by, `marked the final submission for “${p.title}”`, p.id);
   };
 
@@ -353,7 +358,7 @@ window.RCP = window.RCP || {};
   S.recommendIndustry = function (id, by, note) {
     const p = S.project(id);
     p.industryFollowUp = { by, at: nowIso(), note: (note || '').trim() };
-    S.mail([...p.members, p.teacherId, p.mentorId].filter(Boolean), `Taking “${p.title}” further`,
+    S.mail([...p.members, p.teacherId, ...S.mentors(p)].filter(Boolean), `Taking “${p.title}” further`,
       `${S.displayName(by)} has recommended this entry for a long-term industry project.${p.industryFollowUp.note ? ' ' + p.industryFollowUp.note : ''}`,
       { label: 'Open project', href: `#/project/${p.id}` });
     S.log(by, `recommended “${p.title}” for a long-term industry project`, p.id);
@@ -447,11 +452,12 @@ window.RCP = window.RCP || {};
     return id;
   };
 
-  S.addFile = async function (projectId, file, category, by) {
+  S.addFile = async function (projectId, file, category, by, phaseId=null) {
     if (!S.canSeeProject(S.project(projectId)) || S.role() === 'partner' || by !== S.me().id) throw new Error('Only the assigned project team can upload files.');
-    const id = await putBlob(file);
     const p = S.project(projectId);
-    p.files.push({ id, name: file.name, size: file.size, type: file.type, category, by, at: nowIso() });
+    if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
+    const id = await putBlob(file);
+    p.files.push({ id, phaseId, name: file.name, size: file.size, type: file.type, category, by, at: nowIso() });
     S.log(by, `uploaded ${category.toLowerCase()} “${file.name}” to “${p.title}”`, p.id);
     return id;
   };
@@ -498,7 +504,7 @@ window.RCP = window.RCP || {};
     const rows = [['Title', 'Stage', 'Competition / partner', 'Team', 'Teacher', 'Mentor', 'Status', 'Endorsed', 'Decision', 'Logs', 'Result']];
     for (const p of db.projects) {
       rows.push([p.title, p.stage === 1 ? 'Stage 1 industry' : 'Stage 2 competition', p.competitionId ? S.comp(p.competitionId).short : p.partner || '',
-        p.members.map(S.displayName).join('; '), p.teacherId ? S.displayName(p.teacherId) : '', p.mentorId ? S.displayName(p.mentorId) : '',
+        p.members.map(S.displayName).join('; '), p.teacherId ? S.displayName(p.teacherId) : '', S.mentors(p).map(S.displayName).join('; '),
         RCP.STATUS[p.status].label, p.endorsement && !p.endorsement.declined ? p.endorsement.at.slice(0, 10) : '',
         p.decision ? `${p.decision.outcome} ${p.decision.at.slice(0, 10)}` : '', p.logs.length, p.result || '']);
     }

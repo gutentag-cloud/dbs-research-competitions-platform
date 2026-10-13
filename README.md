@@ -15,20 +15,20 @@ node server.cjs
 
 Open `http://localhost:4183` (use that exact hostname). Initial administrator: **Mr. XXX / Mr. XXX**. On first login, choose **Save password** or **Continue with default password**. Continuing preserves the username-as-password default and does not relax project membership checks. Each original named account initially uses its full displayed name as username and password, including spaces. New committee-created accounts follow the same convention. Account owners can change passwords later under My account.
 
-Under **Accounts**, committee members create or suspend accounts, assign internal/partner roles and reset passwords. Under a project's **Project participants**, the committee selects the students taking part. Student accounts start in the student role and cannot switch into committee roles. Jaden Wong and Trevor Chak are the confirmed Disney participants. They share the four Disney workspaces; they have no access to the PwC project unless the committee explicitly adds them there.
+Under **Accounts**, committee members create or suspend accounts, assign internal/partner roles and reset passwords. Under a project's **Project participants**, the committee selects the students taking part. Student accounts start in the student role and cannot switch into committee roles. Jaden Wong and Trevor Chak are the confirmed Disney participants. They share one Disney project with four phases; they have no access to the PwC project unless the committee explicitly adds them there.
 
 The server filters project data before sending it to the browser and checks membership again on each file download or mutation. It uses salted PBKDF2 password hashes, eight-hour HttpOnly sessions, origin and CSRF checks, login rate limiting, and Secure cookies when configured with an HTTPS origin. Account suspension, password reset and membership changes affect subsequent requests. Files are stored under hashed filenames outside the static-file whitelist. Credential fields are not returned in the client state. Sign-ins do not appear in recent activity.
 
 ## Disney source content
 
-Four workspaces were derived from the supplied Software folder:
+Four phases of one Disney project were derived from the supplied Software folder:
 
 1. Railway LiDAR intrusion detection — `RPi5/README.md`.
 2. Railway camera detection — `Camera Detection/README.md`.
 3. Railway sensor and gauge integration — `RPi5/SYSTEM_CONSOLE.md` and supporting notes.
 4. Railway system console and evidence — `RPi5/SYSTEM_CONSOLE.md` and hardware preparation notes.
 
-The four Disney workstreams are active, reflecting confirmation that the project is already underway. No approvals, field trials or completed results have been invented. The source's outstanding validation requirements remain explicit. Each workspace contains a labelled synthetic trial README and checklist CSV: **eight trial files**, with no real field measurements or credentials.
+The Disney project is active, reflecting confirmation that the project is already underway. No approvals, field trials or completed results have been invented. The source's outstanding validation requirements remain explicit. Each phase contains a labelled synthetic trial README and checklist CSV: **eight trial files**, with no real field measurements or credentials.
 
 The private local import contains **nine original documents**: the two subsystem READMEs, replay CSV, clearance-envelope and maintenance-vehicle PDFs, D6 protocol notes, gauge-mount defaults, system-console notes and pre-hardware notes. No configuration, environment secrets, model files, photographs or full source tree were copied. Originals remain in `.private-pilot/` and are excluded from Git and GitHub Pages. The source folder was read only and was not modified.
 
@@ -74,8 +74,14 @@ Existing applications, endorsement, review, mentor matching, progress logs, uplo
 
 ## Workspaces and shared links
 
-**Workspaces** opens one dedicated project workspace per visible project, including the four Disney workstreams and PwC Dark Lab. Each project page has a **Workspace links** panel. Disney uses the existing private `gutentag-cloud/Disney-Railway-Tracker` repository; PwC uses the existing private `gutentag-cloud/DBS-Robotics-R-D-x-PwC-Domain-Project` repository. These links do not change repository permissions.
+**Workspaces** opens one dedicated project workspace per visible project, including Disney (one project with four phases) and PwC Dark Lab. Each project page has a **Workspace links** panel. Disney uses the existing private `gutentag-cloud/Disney-Railway-Tracker` repository; PwC uses the existing private `gutentag-cloud/DBS-Robotics-R-D-x-PwC-Domain-Project` repository. These links do not change repository permissions.
 
 Participants, assigned teachers/mentors and committee staff can edit the GitHub and Google Drive fields. Only HTTPS links on github.com, drive.google.com or docs.google.com are accepted. Partners cannot edit them. No Google Drive folder was invented or created; the field is ready for the team's real link.
 
 The first-login password choice is optional in both public prototype and private-server mode. Tests check retaining the default password across login, participant-only access after that choice, link persistence, invalid-link rejection and rejected edits to unrelated projects.
+
+## Disney partner workspace access
+
+The pilot Disney account uses username `Disney` and default password `Disney`. It has full read access to the Disney project and all four phases: project details, team, deadlines, progress logs and every project document, including experience evidence. It cannot access PwC or change accounts, participants, links or project records. Other partner accounts continue to receive only selected documents unless the committee enables full workspace access under Accounts. Full access is always limited to the selected projects; removing a project or suspending the account revokes access. Google Drive/GitHub permissions remain separate. Public Pages is a browser prototype; server-enforced protection and original files require the private backend.
+
+Isaac and Fergus Tam are assigned to the Disney project and all four phases. Fergus Tam has a mentor account with default username and password `Fergus Tam`. No teacher endorsement, committee decision or completed result is inferred from that confirmation.

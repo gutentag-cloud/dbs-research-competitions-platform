@@ -14,7 +14,7 @@ const {server,sql,read,write,store}=require('../server.cjs');
  let r=await action(admin,'manageAccount',[{username:'Nonparticipant',roles:['student'],active:true,projectIds:[]}]);assert.equal(r.status,200);const nonId=r.body.result.id;
  r=await action(admin,'addFile',['p-disney',{name:'trial.txt',type:'text/plain',content:Buffer.from('trial document').toString('base64')},'Proposal','forged']);assert.equal(r.status,200);const doc=r.body.result;
  const disney=await login('Jaden Wong');assert.equal((await action(disney,'changePassword',['Jaden Wong','jaden student password 2026'])).status,200);
- const ds=await req('session',null,disney);assert.equal(ds.body.session.role,'student');assert.deepEqual(ds.body.db.projects.map(p=>p.id),['p-disney','p-disney-camera','p-disney-sensors','p-disney-console']);assert.ok(ds.body.db.users.every(u=>!u.passwordHash&&!u.passwordSalt));
+ const ds=await req('session',null,disney);assert.equal(ds.body.session.role,'student');assert.deepEqual(ds.body.db.projects.map(p=>p.id),['p-disney']);assert.ok(ds.body.db.users.every(u=>!u.passwordHash&&!u.passwordSalt));
  assert.equal((await req('files/'+doc,null,disney)).body,'trial document');
  assert.equal((await action(disney,'addFile',['p-pwc',{name:'forbidden.txt',content:'eA=='},'Other','jaden'])).status,400);
  assert.equal((await action(disney,'signIn',['jaden','committee'])).status,400);
@@ -37,6 +37,19 @@ const {server,sql,read,write,store}=require('../server.cjs');
  r=await action(admin,'manageAccount',[{username:'PwC partner',roles:['partner'],active:true,projectIds:['p-pwc']}]);const other=await login('PwC partner');await action(other,'changePassword',['PwC partner','other partner password 2026']);assert.equal((await req('files/'+doc,null,other)).status,404);
  assert.equal((await action(partner,'addFile',['p-disney',{name:'bad.txt',content:'eA=='},'Other',partnerId])).status,400);
  await action(admin,'shareFile',['p-disney',doc,[]]);assert.equal((await req('files/'+doc,null,partner)).status,404);
+
+
+
+ r=await action(disney,'addFile',['p-disney',{name:'phase-two.txt',content:'eA=='},'Other','forged','p-disney-camera']);assert.equal(r.status,200);const phaseDoc=r.body.result;assert.equal((await req('session',null,disney)).body.db.projects[0].files.find(f=>f.id===phaseDoc).phaseId,'p-disney-camera');assert.equal((await action(disney,'addLog',['p-disney','forged','2026-10-13','Phase two update',[phaseDoc],'p-disney-camera'])).status,200);assert.equal((await action(disney,'addLog',['p-disney','forged','2026-10-13','invalid',[],'p-pwc'])).status,400);
+ const fergus=await login('Fergus Tam');assert.equal((await action(fergus,'skipPasswordChange',[])).status,200);const mentorState=(await req('session',null,fergus)).body;assert.equal(mentorState.session.role,'mentor');assert.equal(mentorState.db.projects.length,1);assert.ok(mentorState.db.projects.every(p=>p.mentorIds.includes('isaac')&&p.mentorIds.includes('fergus-tam')&&p.checklist.mentor));assert.equal((await req('files/'+doc,null,fergus)).status,200);assert.equal((await action(fergus,'addDeadline',['p-disney','Mentor review','2026-10-20','forged'])).status,200);assert.equal((await action(fergus,'addDeadline',['p-pwc','Forbidden','2026-10-20','fergus-tam'])).status,400);
+ const industry=await login('Disney');assert.equal((await action(industry,'skipPasswordChange',[])).status,200);
+ r=await action(admin,'addFile',['p-disney',{name:'experience.txt',content:Buffer.from('project experience').toString('base64')},'Experience evidence']);assert.equal(r.status,200);const allDoc=r.body.result;
+ r=await action(admin,'addLog',['p-disney','forged','2026-10-13','Disney project progress',[]]);assert.equal(r.status,200);
+ const full=(await req('session',null,industry)).body.db;assert.equal(full.projects.length,1);assert.ok(full.projects.every(p=>p.id.startsWith('p-disney')));assert.ok(full.projects.find(p=>p.id==='p-disney').logs.some(l=>l.text==='Disney project progress'));assert.deepEqual(full.projects.find(p=>p.id==='p-disney').members,['jaden','trevor']);assert.ok(full.users.every(u=>!u.passwordHash&&!u.passwordSalt));
+ assert.equal((await req('files/'+allDoc,null,industry)).body,'project experience');assert.equal((await req('files/'+doc,null,industry)).status,200);
+ r=await action(admin,'addFile',['p-pwc',{name:'pwc.txt',content:'eA=='},'Other']);const pwcDoc=r.body.result;assert.equal((await req('files/'+pwcDoc,null,industry)).status,404);
+ assert.equal((await action(industry,'setProjectLinks',['p-disney',{github:'',drive:''}])).status,400);assert.equal((await action(industry,'manageAccount',[{}])).status,400);
+ assert.equal((await action(admin,'manageAccount',[{id:'disney-partner',username:'Disney',roles:['partner'],active:true,projectIds:[],fullWorkspaceAccess:true}])).status,200);assert.equal((await req('session',null,industry)).body.session,null);const narrowed=await login('Disney');assert.equal((await req('files/'+doc,null,narrowed)).status,404);assert.deepEqual((await req('session',null,narrowed)).body.db.projects.map(p=>p.id),[]);
  await req('logout',{},disney);assert.equal((await req('files/'+doc,null,disney)).status,401);
  assert.equal(read().audit.some(a=>/^signed in/.test(a.text)),false);
  console.log('Passed HTTP checks: authentication, optional default-password continuation, workspace links, CSRF, origin checks, no student privilege escalation, participant-only state and downloads, denied writes, membership revocation, disabled accounts, logout and private-path isolation.');

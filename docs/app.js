@@ -47,7 +47,7 @@
     student: [['#/', 'My projects'], ['#/apply', 'New application'], ['#/postings', 'Old Boy projects'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
     teacher: [['#/', 'Overview'], ['#/endorse', 'Endorsements'], ['#/propose', 'Propose a project'], ['#/competitions', 'Competitions'], ['#/calendar', 'Calendar']],
     mentor: [['#/', 'My mentees'], ['#/postings', 'My posted projects'], ['#/postings/new', 'Post a project'], ['#/calendar', 'Calendar']],
-    partner: [['#/', 'Shared documents']],
+    partner: [['#/', 'My projects']],
     committee: [['#/', 'Dashboard'], ['#/accounts', 'Accounts'], ['#/review', 'Review queue'], ['#/quota', 'Quota tracker'], ['#/eligibility', 'Eligibility'], ['#/register', 'Register'], ['#/calendar', 'Calendar'], ['#/audit', 'Audit log']],
   };
   const ROLE_LABEL = { student: 'Student', teacher: 'Teacher', mentor: 'Old Boy mentor', committee: 'Committee', partner: 'External partner' };
@@ -61,7 +61,7 @@
     const otherRoles = me.roles.filter((r) => r !== role && !me.roles.includes('student'));
     return html`
       <header class="topbar">
-        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>${S.isRemote() ? 'Private R&D workspace' : 'Browser prototype'} · Disney & PwC Dark Lab</small></span></a>
+        <a class="brand" href="#/"><img src="assets/crest.png" alt=""><span><b>Research &amp; Competitions</b><small>${S.isRemote() ? 'Private R&D workspace' : 'Browser prototype'}</small></span></a>
         <nav class="nav">${links}<a href="#/workspaces">Workspaces</a><a href="#/account">My account</a><a href="#/mail" class="${route === '#/mail' ? 'on' : ''}">Mail${unread ? html` <span class="count">${unread}</span>` : ''}</a></nav>
         <div class="whoami">
           ${avatar(me.id)}
@@ -83,7 +83,7 @@
       <h1>Research &amp; Competitions Platform</h1>
       <p>Research projects and competition entries at Diocesan Boys’ School.</p>
       <p class="poc-note">${S.isRemote() ? 'Private project workspace. Sign in with your assigned account.' : 'Public browser prototype. Original project files are kept in the private workspace.'}</p>
-      <div class="login-note"><p>Disney and PwC Dark Lab R&amp;D projects.</p><small>2026–27 school year</small></div>
+      <div class="login-note"><p>School research and development.</p><small>2026–27 school year</small></div>
     </div><div class="login-pick"><h2>Sign in</h2><p class="muted">Use your assigned account. Roles are managed by the committee.</p>
       ${flash ? html`<div class="flash tone-${flash.tone}" role="alert">${flash.msg}</div>` : ''}
       <form data-form="login"><label class="field"><span>Username</span><input name="username" autocomplete="username" required></label>
@@ -99,6 +99,9 @@
     <section class="panel"><p>${u.mustChangePassword ? 'Change your password, or continue with the default password.' : 'Change your password here.'}</p>
     <form data-form="password"><label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label><label class="field"><span>New password</span><input type="password" name="password" minlength="12" maxlength="256" autocomplete="new-password" required></label><label class="field"><span>Confirm new password</span><input type="password" name="confirm" minlength="12" maxlength="256" autocomplete="new-password" required></label><button class="btn">Save password</button></form>${u.mustChangePassword ? html`<button class="btn ghost" data-act="skip-password">Continue with default password</button>` : ''}<p class="small muted">At least 12 characters. ${S.isRemote() ? 'Accounts are saved on the private server.' : 'This prototype saves a salted password hash in this browser. Accounts are not synchronised across devices.'}</p></section>`;
   }
+  function phaseField(p) {
+    return p.phases?.length ? html`<label class="field"><span>Project phase</span><select name="phaseId"><option value="">Whole project</option>${p.phases.map(phase=>html`<option value="${phase.id}">Phase ${phase.number} · ${phase.title}</option>`)}</select></label>` : '';
+  }
   function projectLinks(p) {
     return html`<div class="row">${p.links?.github ? html`<a class="btn small ghost" href="${p.links.github}" target="_blank" rel="noopener noreferrer">Open GitHub ↗</a>` : ''}${p.links?.drive ? html`<a class="btn small ghost" href="${p.links.drive}" target="_blank" rel="noopener noreferrer">Open Google Drive ↗</a>` : ''}</div>`;
   }
@@ -110,6 +113,7 @@
     return html`<label class="field"><span>Username / display name</span><input name="username" value="${u ? u.username : ''}" required maxlength="100"></label>
     <fieldset><legend>Assigned roles</legend>${Object.entries(ROLE_LABEL).map(([r,label]) => html`<label class="check"><input type="checkbox" name="roles" value="${r}" ${u && u.roles.includes(r) ? 'checked' : ''}> ${label}</label>`)}</fieldset>
     <fieldset><legend>Partner project access</legend>${S.db.projects.map(p => html`<label class="check"><input type="checkbox" name="projectIds" value="${p.id}" ${u && (u.projectIds || []).includes(p.id) ? 'checked' : ''}> ${p.title}</label>`)}</fieldset>
+    <label class="check"><input type="checkbox" name="fullWorkspaceAccess" ${u?.fullWorkspaceAccess ? 'checked' : ''}> Partner can read the entire assigned workspace, including all project documents</label>
     <label class="check"><input type="checkbox" name="active" ${!u || u.active !== false ? 'checked' : ''}> Account enabled</label>`;
   }
   function viewAccounts() {
@@ -119,13 +123,14 @@
     ${S.db.users.filter(u => u.id !== S.me().id).map(u => html`<details class="panel"><summary>${u.username} · ${u.roles.map(r => ROLE_LABEL[r]).join(', ')} · ${u.active === false ? 'Suspended' : 'Enabled'}</summary><form data-form="account-manage" data-user="${u.id}">${accountFields(u)}<div class="row"><button class="btn">Save access</button><button type="button" class="btn ghost" data-act="account-reset" data-user="${u.id}">Reset to default password</button></div></form></details>`)}`;
   }
   function viewPartnerHome(me) {
+    if(me.fullWorkspaceAccess)return viewWorkspaces(me,'partner');
     const projects = S.db.projects.filter(p => (me.projectIds || []).includes(p.id));
     return html`<div class="page-head"><div><h1>Partner documents</h1><p class="muted">Only documents the committee has selected for your account.</p></div></div>${projects.map(p => html`<section class="panel"><h2>${p.partner || p.title}</h2><p>${p.title}</p>${p.files.filter(f => S.canReadFile(f.id)).length ? fileChips(p.files.filter(f => S.canReadFile(f.id))) : empty('No documents have been shared yet.')}</section>`)}${!projects.length ? empty('No projects assigned. Contact the committee.') : ''}`;
   }
   function sharingControls(p,f) {
-    if (f.category === 'Experience evidence') return html`<small class="muted">Student evidence · internal only</small>`;
+    if (f.category === 'Experience evidence') return html`<small class="muted">Student evidence · full-workspace partners can read this file</small>`;
     const partners = S.usersWith('partner').filter(u => u.active !== false && (u.projectIds || []).includes(p.id));
-    return html`<details><summary class="small">Partner access</summary><form data-form="share-file" data-project="${p.id}" data-file="${f.id}">${partners.map(u => html`<label class="check"><input type="checkbox" name="partners" value="${u.id}" ${(f.partnerIds || []).includes(u.id) ? 'checked' : ''}> ${u.username}</label>`)}${!partners.length ? html`<p class="small muted">Create a partner account and assign this project in Accounts first.</p>` : ''}<p class="small muted">Select approved recipients. Clear all recipients to revoke access.</p><button class="btn small">Save document access</button></form></details>`;
+    return html`<details><summary class="small">Partner access</summary><form data-form="share-file" data-project="${p.id}" data-file="${f.id}">${partners.map(u => html`<label class="check"><input type="checkbox" name="partners" value="${u.id}" ${(f.partnerIds || []).includes(u.id) ? 'checked' : ''}> ${u.username}</label>`)}${!partners.length ? html`<p class="small muted">Create a partner account and assign this project in Accounts first.</p>` : ''}<p class="small muted">Individual grants apply to document-only partners. Full-workspace partners can read every project file; manage their scope in Accounts.</p><button class="btn small">Save document access</button></form></details>`;
   }
 
   // ---------- shared pieces ----------
@@ -146,7 +151,7 @@
         <div class="muted small">${p.members.map(S.displayName).join(', ')}</div>
         <div class="progress"><span style="width:${Math.round((RCP.ACCOUNTABILITY.filter(([k]) => p.checklist[k]).length / RCP.ACCOUNTABILITY.length) * 100)}%"></span></div>
         <div class="card-foot small">
-          ${p.mentorId ? html`<span>Mentor: ${S.displayName(p.mentorId)}</span>` : ''}
+          ${p.mentorId ? html`<span>Mentor: ${S.mentors(p).map(S.displayName).join(', ')}</span>` : ''}
           ${due ? html`<span class="${due.overdue ? 'tone-bad-text' : 'muted'}">${due.overdue ? `Log overdue by ${-due.days} days` : `Next log due in ${due.days} days`}</span>` : ''}
           ${extra || ''}
         </div>
@@ -224,7 +229,7 @@
   }
 
   function viewMentorHome(me) {
-    const mine = S.db.projects.filter((p) => p.mentorId === me.id);
+    const mine = S.db.projects.filter((p) => S.mentors(p).includes(me.id));
     const posts = S.db.postings.filter((o) => o.by === me.id);
     const pendingApps = posts.reduce((n, o) => n + o.applications.filter((a) => a.status === 'pending').length, 0);
     return html`
@@ -368,12 +373,13 @@
 
   // ---------- project page (slide 11 prototype) ----------
   function viewProject(me, role, id) {
+    if(['p-disney-camera','p-disney-sensors','p-disney-console'].includes(id))id='p-disney';
     const p = S.project(id);
     if (!p) return empty('Project not found.', '#/', 'Back');
-    if (role === 'partner') return viewPartnerHome(me);
+    if (role === 'partner' && !me.fullWorkspaceAccess) return viewPartnerHome(me);
     if (!canSee(p, me, role)) return empty('You can only open projects you are part of.', '#/', 'Back');
     const isMember = p.members.includes(me.id);
-    const isMentor = p.mentorId === me.id;
+    const isMentor = S.mentors(p).includes(me.id);
     const due = S.logDue(p);
     const comp = p.competitionId ? S.comp(p.competitionId) : null;
     const today = todayIso();
@@ -392,8 +398,9 @@
           ${p.teacherId === me.id && p.status === 'endorsement' ? html`<a class="btn" href="#/endorse/${p.id}">Endorse</a>` : ''}
         </div>
       </div>
-      <section class="panel"><h3>Workspace links</h3>${projectLinks(p)}<p class="small muted">Google Drive and GitHub access is controlled by those services.</p><details><summary>Edit links</summary><form data-form="project-links" data-project="${p.id}"><label class="field"><span>GitHub repository</span><input type="url" name="github" value="${p.links?.github || ''}" placeholder="https://github.com/owner/repository"></label><label class="field"><span>Google Drive folder or document</span><input type="url" name="drive" value="${p.links?.drive || ''}" placeholder="https://drive.google.com/..."></label><button class="btn small">Save links</button></form></details></section>
+      <section class="panel"><h3>Workspace links</h3>${projectLinks(p)}<p class="small muted">Google Drive and GitHub access is controlled by those services.</p>${role !== 'partner' ? html`<details><summary>Edit links</summary><form data-form="project-links" data-project="${p.id}"><label class="field"><span>GitHub repository</span><input type="url" name="github" value="${p.links?.github || ''}" placeholder="https://github.com/owner/repository"></label><label class="field"><span>Google Drive folder or document</span><input type="url" name="drive" value="${p.links?.drive || ''}" placeholder="https://drive.google.com/..."></label><button class="btn small">Save links</button></form></details>` : ''}</section>
       ${role === 'committee' && !me.roles.includes('student') ? html`<details class="panel"><summary>Project participants</summary><form data-form="project-members" data-project="${p.id}">${S.usersWith('student').map(u=>html`<label class="check"><input type="checkbox" name="members" value="${u.id}" ${p.members.includes(u.id)?'checked':''}> ${u.name}</label>`)}<button class="btn small">Save participants</button></form></details>` : ''}
+      ${p.phases?.length ? html`<section class="panel"><h3>Project phases</h3><div class="grid-2">${p.phases.map(phase=>html`<section><h4>Phase ${phase.number} · ${phase.title}</h4><p class="small pre">${phase.abstract}</p>${fileChips(p.files.filter(f=>f.phaseId===phase.id))}</section>`)}</div></section>` : ''}
       ${checklist(p)}
       ${p.endorsement && p.endorsement.declined && p.status === 'returned' ? html`<div class="callout tone-bad"><b>Returned by ${S.displayName(p.endorsement.by)}:</b> ${p.endorsement.note}</div>` : ''}
       <div class="grid-2">
@@ -412,7 +419,7 @@
             ${p.logs.length ? html`<ol class="timeline">${[...p.logs].reverse().map((l) => html`
               <li>
                 <div class="tl-head"><b>${date(l.date)}</b><span class="muted small">${S.displayName(l.by)} · ${ago(l.at)}</span></div>
-                <p class="pre">${l.text}</p>
+                <p class="small muted">${l.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===l.phaseId)?.number || '—') : 'Project update'}</p><p class="pre">${l.text}</p>
                 ${l.files.length ? html`<div class="files-inline">${l.files.map((fid) => fileById[fid] ? html`<button class="file-chip" data-act="download" data-file="${fid}">${fileById[fid].name}</button>` : '')}</div>` : ''}
                 ${l.comments.map((c) => html`<div class="comment">${avatar(c.by)}<div><b>${S.displayName(c.by)}</b> <span class="muted small">${ago(c.at)}</span><p>${c.text}</p></div></div>`)}
                 ${isMentor || role === 'committee' || p.teacherId === me.id ? html`
@@ -420,7 +427,7 @@
               </li>`)}</ol>` : html`<p class="muted">No logs yet.</p>`}
             ${isMember && p.status === 'active' ? html`
               <form class="log-form" data-form="log">
-                <h4>Add a progress log</h4>
+                <h4>Add a progress log</h4>${phaseField(p)}
                 <div class="row"><label class="field"><span>Log date</span><input type="date" name="date" value="${today}" required></label>
                 <label class="field grow"><span>Attach files <small>(optional)</small></span><input type="file" name="files" multiple></label></div>
                 <label class="field"><span>What did you do, what did you find, what's next?</span><textarea name="text" rows="4" required></textarea></label>
@@ -435,11 +442,11 @@
             <dl class="kv">
               <dt>Team</dt><dd>${people(p.members)}</dd>
               <dt>Teacher-in-charge</dt><dd>${p.teacherId ? people([p.teacherId]) : '—'}</dd>
-              <dt>Old Boy mentor</dt><dd>${p.mentorId ? people([p.mentorId]) : html`<span class="muted">Not assigned</span>`}</dd>
+              <dt>Mentors</dt><dd>${p.mentorId ? people(S.mentors(p)) : html`<span class="muted">${p.mentorAssigned ? 'Assigned · name to be confirmed' : 'Not assigned'}</span>`}</dd>
               ${p.industryTutor ? html`<dt>Industrial tutor</dt><dd>${p.industryTutor}</dd>` : ''}
             </dl>
             ${role === 'committee' && ['active', 'review'].includes(p.status) ? html`
-              <form data-form="assign-mentor" class="inline-form"><select name="mentorId" aria-label="Assign mentor"><option value="">${p.mentorId ? 'Change mentor…' : 'Assign mentor…'}</option>${S.usersWith('mentor').map((u) => html`<option value="${u.id}">${u.name}</option>`)}</select><button class="btn small ghost">Assign</button></form>` : ''}
+              <form data-form="assign-mentor" class="inline-form"><select name="mentorId" aria-label="Assign mentors" multiple>${S.usersWith('mentor').map((u) => html`<option value="${u.id}" ${S.mentors(p).includes(u.id) ? 'selected' : ''}>${u.name}</option>`)}</select><button class="btn small ghost">Assign</button></form>` : ''}
           </div>
 
           <div class="panel">
@@ -467,9 +474,9 @@
 
           <div class="panel">
             <h3>Files</h3>${S.isRemote() ? html`<p class="small muted">Private server storage. Downloads require your assigned project account.</p>` : html`<p class="small muted">Public trial files only. Original project files are available in the private local workspace.</p>`}
-            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.trial ? 'Trial · synthetic · ' : ''}${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
+            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===f.phaseId)?.number || '—') + ' · ' : ''}${f.trial ? 'Trial · synthetic · ' : ''}${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
             ${isMember || isMentor || role === 'committee' ? html`
-              <form data-form="upload" class="upload">
+              <form data-form="upload" class="upload">${phaseField(p)}
                 <select name="category" aria-label="File type">${RCP.FILE_CATEGORIES.map((c) => html`<option>${c}</option>`)}</select>
                 <input type="file" name="file" required>
                 <button class="btn small">Upload</button>
@@ -566,11 +573,11 @@
       ${P.map((p) => { const due = S.logDue(p); return html`<tr
         data-title="${p.title.toLowerCase()}" data-track="${trackLabel(p).toLowerCase()}"
         data-status="${RCP.STATUS[p.status].label.toLowerCase()}" data-teacher="${p.teacherId ? S.displayName(p.teacherId).toLowerCase() : ''}"
-        data-mentor="${p.mentorId ? S.displayName(p.mentorId).toLowerCase() : ''}" data-logs="${p.logs.length}">
+        data-mentor="${p.mentorId ? S.mentors(p).map(S.displayName).join(', ').toLowerCase() : ''}" data-logs="${p.logs.length}">
         <td><a href="#/project/${p.id}">${p.title}</a></td><td class="small">${trackLabel(p)}</td>
         <td class="small">${p.members.map(S.displayName).join(', ')}</td>
         <td class="small">${p.teacherId ? S.displayName(p.teacherId) : '—'}</td>
-        <td class="small">${p.mentorId ? S.displayName(p.mentorId) : '—'}</td>
+        <td class="small">${p.mentorId ? S.mentors(p).map(S.displayName).join(', ') : '—'}</td>
         <td>${badge(p.status)}</td>
         <td class="small ${due && due.overdue ? 'tone-bad-text' : ''}">${p.logs.length}${due && due.overdue ? ' · overdue' : ''}</td></tr>`; })}
       </tbody></table></div>`;
@@ -862,7 +869,7 @@
     }
     if (me.mustChangePassword) { root.innerHTML = shell(me,role,hash,viewAccount()).s; flash = null; return; }
     const parts = hash.slice(2).split('/');
-    if (role === 'partner' && !['','account','mail'].includes(parts[0])) { root.innerHTML=shell(me,role,hash,viewPartnerHome(me)).s;return; }
+    if (role === 'partner' && !['','account','mail',...(me.fullWorkspaceAccess ? ['workspaces','project'] : [])].includes(parts[0])) { root.innerHTML=shell(me,role,hash,viewPartnerHome(me)).s;return; }
     let body;
     const guard = (roles, fn) => (roles.includes(role) ? fn() : empty('This page is for ' + roles.map((r) => ROLE_LABEL[r].toLowerCase()).join(' and ') + ' accounts.', '#/', 'Back'));
     switch (parts[0]) {
@@ -1004,7 +1011,7 @@
       switch (form.dataset.form) {
         case 'login': await S.login(fd.get('username'),fd.get('password')); wizard=null;location.hash='#/';route();return;
         case 'password': if(fd.get('password') !== fd.get('confirm')) throw new Error('Passwords do not match.');await S.changePassword(fd.get('current'),fd.get('password'));notify('Password updated.');location.hash='#/';route();return;
-        case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active')});notify('Account access saved. New accounts use their username as the default password.');break;
+        case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active'),fullWorkspaceAccess:fd.has('fullWorkspaceAccess')});notify('Account access saved. New accounts use their username as the default password.');break;
         case 'project-links': await S.setProjectLinks(projectId,{github:fd.get('github'),drive:fd.get('drive')});notify('Workspace links saved.');break;
         case 'project-members': await S.setProjectMembers(projectId,fd.getAll('members'));notify('Project participants updated.');break;
         case 'share-file': await S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
@@ -1028,15 +1035,15 @@
         case 'review': await S.decide(projectId, me.id, choice === 'yes', fd.get('note').trim(), fd.get('mentorId') || null); notify(choice === 'yes' ? 'Approval sent to the team and teacher in Mail.' : 'Decision recorded and the team notified.'); location.hash = '#/review'; return;
         case 'log': {
           const ids = [];
-          for (const f of fd.getAll('files')) if (f && f.size) ids.push(await S.addFile(projectId, f, 'Progress log', me.id));
-          await S.addLog(projectId, me.id, fd.get('date'), fd.get('text'), ids);
+          for (const f of fd.getAll('files')) if (f && f.size) ids.push(await S.addFile(projectId, f, 'Progress log', me.id, fd.get('phaseId') || null));
+          await S.addLog(projectId, me.id, fd.get('date'), fd.get('text'), ids, fd.get('phaseId') || null);
           notify('Log posted.');
           break;
         }
         case 'comment': await S.comment(projectId, form.dataset.log, me.id, fd.get('text')); notify('Feedback sent to the team.'); break;
         case 'add-deadline': await S.addDeadline(projectId, fd.get('title'), fd.get('date'), me.id); notify('Deadline added; the team has been notified in Mail.'); break;
-        case 'upload': { const f = fd.get('file'); if (!f || !f.size) throw new Error('Choose a file first.'); await S.addFile(projectId, f, fd.get('category'), me.id); notify(`Uploaded ${f.name}.`); break; }
-        case 'assign-mentor': if (!fd.get('mentorId')) throw new Error('Pick a mentor.'); await S.assignMentor(projectId, fd.get('mentorId'), me.id); notify('Mentor assigned and emailed.'); break;
+        case 'upload': { const f = fd.get('file'); if (!f || !f.size) throw new Error('Choose a file first.'); await S.addFile(projectId, f, fd.get('category'), me.id, fd.get('phaseId') || null); notify(`Uploaded ${f.name}.`); break; }
+        case 'assign-mentor': if (!fd.getAll('mentorId').length) throw new Error('Pick a mentor.'); await S.assignMentor(projectId, fd.getAll('mentorId'), me.id); notify('Mentor assigned and emailed.'); break;
         case 'result': await S.recordResult(projectId, me.id, fd.get('result')); notify('Result saved.'); break;
         case 'industry-followup': await S.recommendIndustry(projectId, me.id, fd.get('note')); notify('Recommended for a long-term industry project; the team, teacher and mentor are notified.'); break;
         case 'places': await S.setPlaces(form.dataset.comp, Number(fd.get('places')), me.id); notify('Places updated.'); break;
