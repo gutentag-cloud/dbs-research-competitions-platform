@@ -589,3 +589,19 @@ RCP.applyCalendarProposal = function(db) {
   };
   RCP.seed=()=>RCP.enableDisneyCollaboration(seed());
 })();
+
+// This report was explicitly approved for public publication.
+RCP.PUBLIC_DISNEY_REPORT={id:'disney-report-4aug-6702b0bd6c2a248f502a28fd',name:'Railway_Intrusion_Detector_Test_Report_4Aug.docx',url:'https://gutentag-cloud.github.io/dbs-research-competitions-platform/assets/reports/Railway_Intrusion_Detector_Test_Report_4Aug.docx'};
+(() => {
+  const seed=RCP.seed;
+  RCP.publishDisneyReport = db => {
+    if(db.disneyPublicReportRevision===1)return db;
+    const p=db.projects.find(p=>p.id==='p-disney'),report=RCP.PUBLIC_DISNEY_REPORT;
+    if(!p)return db;
+    let f=p.files.find(f=>f.id===report.id);
+    if(!f){f={id:report.id,name:report.name,phaseId:'p-disney',category:'Progress log',type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',size:910372,by:'pilot-admin',at:'2026-10-13T00:00:00.000Z',partnerIds:[]};p.files.push(f);}
+    f.publicUrl=report.url;f.publicSource=true;
+    db.disneyPublicReportRevision=1;return db;
+  };
+  RCP.seed=()=>RCP.publishDisneyReport(seed());
+})();
