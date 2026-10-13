@@ -15,7 +15,7 @@
     const d = Math.round((Date.now() - Date.parse(iso)) / 86400000);
     return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 30 ? `${d} days ago` : date(iso);
   };
-  const todayIso = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; };
+  const todayIso = () => S.hkDay();
   const chunk = (a, n) => (a.length ? [a.slice(0, n), ...chunk(a.slice(n), n)] : []);
   const size = (b) => (b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`);
   const badge = (status) => html`<span class="badge tone-${RCP.STATUS[status].tone}">${RCP.STATUS[status].label}</span>`;
@@ -34,6 +34,7 @@
   const audienceOk = (o, u) => !o.audience || o.audience === 'all' || (o.audience === 'G9–G10' ? gradeOf(u) <= 10 : gradeOf(u) >= 11);
 
   let loginRole = 'student';
+  let workspaceSort='newest',workspaceFilter='all';
   let calendarMode = 'months';
   let calendarCompetition = 'all';
   let flash = null;
@@ -106,8 +107,15 @@
     return html`<div class="row">${p.links?.github ? html`<a class="btn small ghost" href="${p.links.github}" target="_blank" rel="noopener noreferrer">Open GitHub ↗</a>` : ''}${p.links?.drive ? html`<a class="btn small ghost" href="${p.links.drive}" target="_blank" rel="noopener noreferrer">Open Google Drive ↗</a>` : ''}</div>`;
   }
   function viewWorkspaces(me,role) {
-    const projects=S.db.projects.filter(p=>canSee(p,me,role));
-    return html`<div class="page-head"><div><h1>Project workspaces</h1><p class="muted">Open each project's files, updates and shared resources.</p></div></div><div class="cards">${projects.map(p=>html`<section class="panel"><span class="track">${trackLabel(p)}</span><h2><a href="#/project/${p.id}">${p.title}</a></h2><p class="small muted">${p.files.length} files · ${p.members.map(S.displayName).join(', ') || 'Team to be assigned'}</p>${projectLinks(p)}<p><a href="#/project/${p.id}">Open workspace →</a></p></section>`)}</div>${projects.length ? '' : empty('No projects assigned yet.')}`;
+    const past=p=>['completed','rejected','archived'].includes(p.status);
+    const recent=p=>Math.max(Date.parse(p.createdAt)||0,...p.logs.map(l=>Date.parse(l.editedAt||l.at)||0));
+    const projects=S.db.projects.filter(p=>canSee(p,me,role)).filter(p=>workspaceFilter==='all'||(workspaceFilter==='past'?past(p):!past(p)));
+    projects.sort((a,b)=>workspaceSort==='az'?a.title.localeCompare(b.title):workspaceSort==='za'?b.title.localeCompare(a.title):workspaceSort==='oldest'?Date.parse(a.createdAt)-Date.parse(b.createdAt):workspaceSort==='updated'?recent(b)-recent(a):Date.parse(b.createdAt)-Date.parse(a.createdAt));
+    const invitations=(S.db.projectInvites||[]).filter(i=>i.studentId===me.id&&i.status==='pending');
+    return html`<div class="page-head"><div><h1>Project workspaces</h1><p class="muted">Current and past projects, progress and achievements.</p></div></div>
+    ${invitations.length?html`<section class="panel"><h2>Team invitations</h2>${invitations.map(i=>html`<div><b>${i.projectTitle}</b><p class="small">You have been invited to join this team.</p><button class="btn small" data-act="invite-response" data-invite="${i.id}" data-accept="yes">Accept invitation</button> <button class="btn small ghost" data-act="invite-response" data-invite="${i.id}" data-accept="no">Decline</button></div>`)}</section>`:''}
+    <section class="panel row"><label class="field"><span>Projects</span><select data-workspace-filter>${[['all','All projects'],['current','Current projects'],['past','Past projects']].map(([value,label])=>html`<option value="${value}" ${workspaceFilter===value?'selected':''}>${label}</option>`)}</select></label><label class="field"><span>Sort by</span><select data-workspace-sort>${[['newest','Creation date · newest first'],['oldest','Creation date · oldest first'],['az','Name · A–Z'],['za','Name · Z–A'],['updated','Latest activity']].map(([value,label])=>html`<option value="${value}" ${workspaceSort===value?'selected':''}>${label}</option>`)}</select></label></section>
+    <div class="cards">${projects.map(p=>html`<section class="panel"><div class="card-top"><span class="track">${trackLabel(p)}</span>${badge(p.status)}</div><h2><a href="#/project/${p.id}">${p.title}</a></h2><p class="small muted">Created ${date(p.createdAt)} · ${p.logs.filter(l=>l.status!=='draft').length} progress ${p.logs.filter(l=>l.status!=='draft').length===1?'log':'logs'} · ${p.files.length} ${p.files.length===1?'file':'files'}</p><p class="small">${p.result||p.achievements?.[0]||p.abstract||'Overview to be recorded.'}</p><p class="small muted">${p.members.map(S.displayName).join(', ')||'Team to be invited'}${p.endorsement&&!p.endorsement.declined?html` · Endorsed by ${S.displayName(p.endorsement.by)}`:''}</p>${projectLinks(p)}<p><a href="#/project/${p.id}">Open workspace →</a></p><button class="btn small ghost" data-act="project-summary" data-project="${p.id}">Download project summary</button></section>`)}</div>${projects.length?'':empty(workspaceFilter==='past'?'No past projects in your assigned workspaces yet.':'No projects match this filter.')}`;
   }
   function accountFields(u) {
     return html`<label class="field"><span>Username / display name</span><input name="username" value="${u ? u.username : ''}" required maxlength="100"></label>
@@ -321,7 +329,7 @@
         <label class="field"><span>Proposal <small>What problem, what you'll build or test, how you'll know it worked (150–300 words)</small></span><textarea name="abstract" rows="8" required>${w.abstract}</textarea></label>`;
     } else if (step === 2) {
       body = html`
-        <p class="muted">Tick everyone on the team. You're included automatically.</p>
+        <p class="muted">Choose students to invite. You're included automatically; others join only after accepting.</p>
         <div class="check-grid">${students.map((u) => html`<label class="check"><input type="checkbox" name="members" value="${u.id}" ${w.members.includes(u.id) ? raw('checked') : ''} ${u.id === me.id ? raw('disabled') : ''}>${avatar(u.id)} ${u.name} <span class="muted small">${u.form}</span></label>`)}</div>`;
     } else if (step === 3) {
       const attached = w.id && S.project(w.id) ? expFiles(S.project(w.id)) : [];
@@ -383,6 +391,7 @@
     const isMentor = S.mentors(p).includes(me.id);
     const canWrite = S.canCollaborate(p), canDeadline = S.canSetDeadlines(p);
     const due = S.logDue(p);
+    const visibleLogs=p.logs.filter(l=>!me.roles.includes('student')||l.status!=='draft');
     const comp = p.competitionId ? S.comp(p.competitionId) : null;
     const today = todayIso();
     const fileById = Object.fromEntries(p.files.map((f) => [f.id, f]));
@@ -401,9 +410,10 @@
         </div>
       </div>
       <section class="panel"><h3>Workspace links</h3>${projectLinks(p)}<p class="small muted">Google Drive and GitHub access is controlled by those services.</p>${role !== 'partner' ? html`<details><summary>Edit links</summary><form data-form="project-links" data-project="${p.id}"><label class="field"><span>GitHub repository</span><input type="url" name="github" value="${p.links?.github || ''}" placeholder="https://github.com/owner/repository"></label><label class="field"><span>Google Drive folder or document</span><input type="url" name="drive" value="${p.links?.drive || ''}" placeholder="https://drive.google.com/..."></label><button class="btn small">Save links</button></form></details>` : ''}</section>
-      ${role === 'committee' && !me.roles.includes('student') ? html`<details class="panel"><summary>Project participants</summary><form data-form="project-members" data-project="${p.id}">${S.usersWith('student').map(u=>html`<label class="check"><input type="checkbox" name="members" value="${u.id}" ${p.members.includes(u.id)?'checked':''}> ${u.name}</label>`)}<button class="btn small">Save participants</button></form></details>` : ''}
+      ${S.canInvite(p)?html`<details class="panel"><summary>Invite a teammate</summary><form data-form="project-invite" data-project="${p.id}"><label class="field"><span>Student</span><select name="studentId" required><option value="">Choose a student</option>${S.inviteCandidates().filter(u=>!p.members.includes(u.id)).map(u=>html`<option value="${u.id}">${u.name}</option>`)}</select></label><p class="small muted">The student receives an invitation in Mail and Workspaces. Project access starts when they accept.</p><button class="btn small">Send invitation</button></form></details>`:''}
+      <section class="panel"><div class="panel-head"><h3>Project overview</h3><button class="btn small ghost" data-act="project-summary" data-project="${p.id}">Download project summary</button></div><p>${p.abstract||'Overview to be recorded.'}</p><p class="small muted">Created ${date(p.createdAt)}${p.completedAt?html` · Completed ${date(p.completedAt)}`:''} · ${visibleLogs.length} submitted progress logs</p><h4>Key achievements</h4>${p.achievements?.length?html`<ul>${p.achievements.map(x=>html`<li>${x}</li>`)}</ul>`:html`<p class="small muted">No key achievements recorded yet.</p>`}${p.result?html`<p><b>Result:</b> ${p.result}</p>`:''}${p.endorsement?html`<p class="small">${p.endorsement.declined?'Returned':'Endorsed'} by ${S.displayName(p.endorsement.by)} · ${date(p.endorsement.at)}${p.endorsement.note?html` · ${p.endorsement.note}`:''}</p>`:html`<p class="small muted">Endorsement not recorded.</p>`}${canWrite?html`<details><summary>Update key achievements</summary><form data-form="project-achievements" data-project="${p.id}"><label class="field"><span>One achievement per line</span><textarea name="achievements" rows="3">${(p.achievements||[]).join('\n')}</textarea></label><button class="btn small">Save achievements</button></form></details>`:''}</section>
       ${p.phases?.length ? html`<section class="panel"><h3>Project phases</h3><div class="grid-2">${p.phases.map(phase=>html`<section><h4>Phase ${phase.number} · ${phase.title}</h4><p class="small pre">${phase.abstract}</p>${fileChips(p.files.filter(f=>f.phaseId===phase.id))}</section>`)}</div></section>` : ''}
-      ${checklist(p)}
+      ${role!=='partner'?checklist(p):''}
       ${p.endorsement && p.endorsement.declined && p.status === 'returned' ? html`<div class="callout tone-bad"><b>Returned by ${S.displayName(p.endorsement.by)}:</b> ${p.endorsement.note}</div>` : ''}
       <div class="grid-2">
         <section>
@@ -418,20 +428,20 @@
           <div class="panel">
             <div class="panel-head"><h3>Progress logs</h3>
               ${due ? html`<span class="small ${due.overdue ? 'tone-bad-text' : 'muted'}">${S.cadenceLabel(p)} · ${due.overdue ? `overdue by ${-due.days} days` : `next due in ${due.days} days`}</span>` : ''}</div>
-            ${p.logs.length ? html`<ol class="timeline">${[...p.logs].reverse().map((l) => html`
+            ${visibleLogs.length ? html`<ol class="timeline">${[...visibleLogs].reverse().map((l) => html`
               <li>
                 <div class="tl-head"><b>${date(l.date)}</b><span class="muted small">${S.displayName(l.by)} · ${ago(l.at)}</span></div>
                 <p class="small muted">${l.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===l.phaseId)?.number || '—') : 'Project update'}</p><p class="pre">${l.text}</p>
                 ${l.files.length ? html`<div class="files-inline">${l.files.map((fid) => fileById[fid] ? html`<button class="file-chip" data-act="download" data-file="${fid}">${fileById[fid].name}</button>` : '')}</div>` : ''}
                 ${l.editedAt ? html`<p class="small muted">Edited by ${S.displayName(l.editedBy)} · ${ago(l.editedAt)}</p>` : ''}
-                ${canWrite ? html`<details><summary>Edit progress log</summary><form data-form="edit-log" data-project="${p.id}" data-log="${l.id}"><label class="field"><span>Log date</span><input type="date" name="date" value="${l.date}" required></label>${phaseField(p,l.phaseId)}<label class="field"><span>Progress update</span><textarea name="text" rows="4" required>${l.text}</textarea></label><button class="btn small">Save changes</button></form></details>` : ''}
+                ${S.canEditLog(p,l) ? html`<details><summary>Edit progress log</summary><form data-form="edit-log" data-project="${p.id}" data-log="${l.id}"><label class="field"><span>Log date</span><input type="date" name="date" value="${l.date}" required></label>${phaseField(p,l.phaseId)}<label class="field"><span>Progress update</span><textarea name="text" rows="4" required>${l.text}</textarea></label><button class="btn small">Save changes</button></form></details>` : ''}
                 ${l.comments.map((c) => html`<div class="comment">${avatar(c.by)}<div><b>${S.displayName(c.by)}</b> <span class="muted small">${ago(c.at)}</span><p>${c.text}</p></div></div>`)}
                 ${canWrite ? html`
                   <form class="comment-form" data-form="comment" data-log="${l.id}"><input name="text" placeholder="Leave feedback" aria-label="Feedback on this log" required maxlength="600"><button class="btn small">Send</button></form>` : ''}
               </li>`)}</ol>` : html`<p class="muted">No logs yet.</p>`}
             ${canWrite && p.status === 'active' ? html`
               <form class="log-form" data-form="log">
-                <h4>Add a progress log</h4>${phaseField(p)}
+                <h4>Add a progress log</h4>${me.roles.includes('student')?html`<p class="small muted">After submitting, you can edit your own log for five hours on the same day (Hong Kong time).</p>`:''}${phaseField(p)}
                 <div class="row"><label class="field"><span>Log date</span><input type="date" name="date" value="${today}" required></label>
                 <label class="field grow"><span>Attach files <small>(optional)</small></span><input type="file" name="files" multiple></label></div>
                 <label class="field"><span>What did you do, what did you find, what's next?</span><textarea name="text" rows="4" required></textarea></label>
@@ -966,6 +976,8 @@
     else if (act === 'del-deadline') { try { await S.removeDeadline(el.dataset.id, me.id); notify('Deadline removed.'); } catch (err) { notify(err.message, 'bad'); } route(); }
     else if (act === 'final') { await S.submitFinal(hash.split('/')[2], me.id); notify('Final submission recorded and notifications added to Mail.'); route(); }
     else if (act === 'shortlist') { await S.shortlist(hash.split('/')[2], el.dataset.app, me.id, el.dataset.yes === '1'); notify(el.dataset.yes === '1' ? 'Applicant sent to the committee for eligibility review.' : 'Applicant declined.'); route(); }
+    else if(act==='invite-response'){try{await S.respondInvite(el.dataset.invite,el.dataset.accept==='yes');notify(el.dataset.accept==='yes'?'Invitation accepted.':'Invitation declined.');}catch(err){notify(err.message,'bad');}route();}
+    else if(act==='project-summary'){try{await showBlob('project-summary-'+el.dataset.project+'.txt',new Blob([S.projectSummary(el.dataset.project)],{type:'text/plain'}));}catch(err){notify(err.message,'bad');route();}}
     else if (act === 'csv') {
       await showBlob('dbs-research-competitions-register.csv', new Blob([S.exportCsv()], { type: 'text/csv' }));
     } else if (act === 'download') {
@@ -991,6 +1003,8 @@
   });
 
   document.addEventListener('change', async (e) => {
+    if(e.target.matches('[data-workspace-filter]')){workspaceFilter=e.target.value;route();return;}
+    if(e.target.matches('[data-workspace-sort]')){workspaceSort=e.target.value;route();return;}
     const sort = e.target.closest('[data-sort]');
     if (sort) { applySort(sort); return; }
     if (e.target.matches('[data-act=calendar-filter]')) { calendarCompetition = e.target.value; route(); }
@@ -1017,7 +1031,8 @@
         case 'password': if(fd.get('password') !== fd.get('confirm')) throw new Error('Passwords do not match.');await S.changePassword(fd.get('current'),fd.get('password'));notify('Password updated.');location.hash='#/';route();return;
         case 'account-manage': await S.manageAccount({id:form.dataset.user || null,username:fd.get('username'),roles:fd.getAll('roles'),projectIds:fd.getAll('projectIds'),active:fd.has('active'),fullWorkspaceAccess:fd.has('fullWorkspaceAccess'),workspaceCollaborator:fd.has('workspaceCollaborator')});notify('Account access saved. New accounts use their username as the default password.');break;
         case 'project-links': await S.setProjectLinks(projectId,{github:fd.get('github'),drive:fd.get('drive')});notify('Workspace links saved.');break;
-        case 'project-members': await S.setProjectMembers(projectId,fd.getAll('members'));notify('Project participants updated.');break;
+        case 'project-invite': await S.inviteStudent(projectId,fd.get('studentId'));notify('Team invitation sent in Mail.');break;
+        case 'project-achievements': await S.setProjectAchievements(projectId,fd.get('achievements'));notify('Key achievements saved.');break;
         case 'share-file': await S.shareFile(projectId,form.dataset.file,fd.getAll('partners'));notify('Partner document access updated.');break;
 
         case 'wizard': {

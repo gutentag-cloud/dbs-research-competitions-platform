@@ -48,6 +48,7 @@ RCP.STATUS = {
   active: { label: 'Active', tone: 'good' },
   submitted: { label: 'Final submitted', tone: 'info' },
   completed: { label: 'Completed', tone: 'good' },
+  archived: { label: 'Archived', tone: 'muted' },
 };
 
 RCP.FILE_CATEGORIES = ['Proposal', 'Progress log', 'Presentation', 'Final submission', 'Experience evidence', 'Other'];

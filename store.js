@@ -136,6 +136,48 @@ window.RCP = window.RCP || {};
   S.canSeeProject = (p, user=S.me(), role=S.role()) => !!(p && user && (user.roles.includes('student') ? p.members.includes(user.id) : role === 'partner' ? (user.projectIds || []).includes(p.id) : role === 'committee' || p.members.includes(user.id) || p.teacherId === user.id || S.mentors(p).includes(user.id)));
   S.canCollaborate = p => !!(S.me() && !S.me().mustChangePassword && S.canSeeProject(p) && (S.role()==='partner' ? S.me().fullWorkspaceAccess===true && S.me().workspaceCollaborator===true : S.role()==='committee' || p.members.includes(S.me().id) || S.mentors(p).includes(S.me().id) || p.teacherId===S.me().id));
   S.canSetDeadlines = p => S.canCollaborate(p) && (S.role()==='partner' || S.role()==='committee' || S.mentors(p).includes(S.me().id) || p.teacherId===S.me().id);
+  S.hkDay = (ms=Date.now()) => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Hong_Kong',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+  S.canEditLog = (p,log,now=Date.now()) => {
+    if(!log || !S.canCollaborate(p))return false;
+    if(!S.me().roles.includes('student'))return true;
+    if(log.status==='draft')return false;
+    const age=now-Date.parse(log.at);if(!Number.isFinite(age))return false;
+    return log.by===S.me().id && log.date===S.hkDay(now) && S.hkDay(Date.parse(log.at))===S.hkDay(now) && age>=0 && age<5*60*60*1000;
+  };
+  S.inviteCandidates = () => db.inviteCandidates || S.usersWith('student');
+  S.canInvite = p => S.canCollaborate(p) && S.role()!=='partner';
+  S.inviteStudent = (projectId,studentId) => {
+    const p=S.project(projectId),u=S.user(studentId);
+    if(!S.canInvite(p)||!u?.roles.includes('student')||u.active===false)throw new Error('Choose an active student for your project.');
+    if(p.members.includes(studentId))throw new Error('This student is already on the team.');
+    const invites=db.projectInvites ||= [];
+    if(invites.some(i=>i.projectId===projectId&&i.studentId===studentId&&i.status==='pending'))throw new Error('An invitation is already pending.');
+    const invitation={id:uid('invite'),projectId,projectTitle:p.title,studentId,by:S.me().id,status:'pending',at:nowIso()};invites.push(invitation);
+    S.mail(studentId,'Project invitation: '+p.title,S.displayName(S.me().id)+' invited you to join this project. Accept or decline under Workspaces.',{label:'Review invitation',href:'#/workspaces'});
+    S.log(S.me().id,'invited '+S.displayName(studentId)+' to “'+p.title+'”',projectId);return invitation;
+  };
+  S.respondInvite = (inviteId,accept) => {
+    const i=(db.projectInvites||[]).find(i=>i.id===inviteId),u=S.me();
+    if(!i||i.status!=='pending'||i.studentId!==u?.id||u.mustChangePassword||!u.roles.includes('student'))throw new Error('This invitation is not available to your account.');
+    const p=S.project(i.projectId);if(!p)throw new Error('Project no longer available.');
+    if(accept!==true&&accept!==false)throw new Error('Choose accept or decline.');
+    const inviter=S.user(i.by);
+    if(accept && (!inviter||inviter.active===false||inviter.roles.includes('partner')||!S.canSeeProject(p,inviter,inviter.roles.includes('committee')?'committee':inviter.roles[0])))throw new Error('The inviter no longer has access to this project.');
+    i.status=accept?'accepted':'declined';i.respondedAt=nowIso();if(accept){p.members=[...new Set([...p.members,u.id])];p.membershipLocked=true;}
+    S.mail(i.by,'Invitation '+i.status+': '+p.title,u.name+' '+i.status+' the team invitation.',{label:'Open project',href:'#/project/'+p.id});
+    S.log(u.id,i.status+' a team invitation for “'+p.title+'”',p.id);
+  };
+  S.setProjectAchievements = (projectId,text) => {
+    const p=S.project(projectId);if(!S.canCollaborate(p))throw new Error('Project collaboration access required.');
+    const values=String(text||'').split('\n').map(x=>x.trim()).filter(Boolean);if(values.length>20||values.some(x=>x.length>300))throw new Error('Use up to 20 achievements, 300 characters each.');
+    p.achievements=values;S.log(S.me().id,'updated key achievements for “'+p.title+'”',p.id);
+  };
+  S.projectSummary = projectId => {
+    const p=S.project(projectId);if(!S.canSeeProject(p)||S.me().mustChangePassword)throw new Error('Project access required.');
+    const name=id=>id?S.displayName(id):'Not recorded',stamp=iso=>iso?iso.slice(0,10):'Not recorded';
+    const logs=p.logs.filter(l=>l.status!=='draft');
+    return [p.title,'Status: '+RCP.STATUS[p.status].label,'Created: '+stamp(p.createdAt),'Completed: '+stamp(p.completedAt),'Partner: '+(p.partner||'—'),'Team: '+(p.members.map(name).join(', ')||'Not recorded.'),'Mentors: '+(S.mentors(p).map(name).join(', ')||'Not recorded.'),'','Overview',p.abstract||'No overview recorded.','','Key achievements',...(p.achievements?.length?p.achievements.map(x=>'- '+x):['No key achievements recorded.']),'Result: '+(p.result||'Not recorded.'),'','Endorsements and decisions','Teacher endorsement: '+(p.endorsement?(p.endorsement.declined?'Returned':'Endorsed')+' by '+name(p.endorsement.by)+' on '+stamp(p.endorsement.at)+(p.endorsement.note?' — '+p.endorsement.note:''):'Not recorded.'),'Committee decision: '+(p.decision?(p.decision.outcome||'Recorded')+' by '+name(p.decision.by)+' on '+stamp(p.decision.at)+(p.decision.note?' — '+p.decision.note:''):'Not recorded.'),'','Project phases',...(p.phases||[]).map(x=>'Phase '+x.number+': '+x.title),'','Progress timeline',...logs.map(l=>l.date+' — '+name(l.by)+'\n'+l.text),'','Documents',...p.files.map(f=>f.name+' ('+f.category+')')].join('\n');
+  };
   S.setProjectMembers = (projectId, ids) => {
     committeeOnly();const p=S.project(projectId);
     if(!p || ids.some(id => !S.user(id)?.roles.includes('student') || S.user(id).active === false)) throw new Error('Select active student accounts.');
@@ -239,15 +281,18 @@ window.RCP = window.RCP || {};
   S.saveDraft = function (draft, by) {
     let p = draft.id ? S.project(draft.id) : null;
     if (!p) {
-      p = { id: uid('p'), status: 'draft', createdAt: nowIso(), endorsement: null, decision: null, mentorId: null, logs: [], files: [], checklist: Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, false])) };
+      p = { id: uid('p'), members:[by], membershipLocked:true, status: 'draft', createdAt: nowIso(), endorsement: null, decision: null, mentorId: null, logs: [], files: [], checklist: Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, false])) };
       db.projects.unshift(p);
     }
-    if (p.membershipLocked && JSON.stringify([...draft.members].sort()) !== JSON.stringify([...p.members].sort())) throw new Error('Only the committee can change participants for this project.');
+    if(p.members.some(id=>!draft.members.includes(id)))throw new Error('Existing team members cannot be removed through an application.');
+    const requested=draft.members.filter(id=>!p.members.includes(id));
+    if(requested.some(id=>!S.user(id)?.roles.includes('student')||S.user(id).active===false))throw new Error('Choose active student accounts.');
     Object.assign(p, {
       stage: draft.stage, origin: draft.origin || 'student', title: draft.title.trim(), abstract: draft.abstract.trim(),
       competitionId: draft.stage === 2 ? draft.competitionId : null, partner: draft.stage === 1 ? draft.partner.trim() : null,
-      members: draft.members, teacherId: draft.teacherId || null, experience: draft.experience.trim(),
+      members: p.members, teacherId: draft.teacherId || null, experience: draft.experience.trim(),
     });
+    for(const id of requested)if(!(db.projectInvites||[]).some(i=>i.projectId===p.id&&i.studentId===id&&i.status==='pending'))S.inviteStudent(p.id,id);
     p.checklist.proposal = !!(p.title && p.abstract);
     p.checklist.experience = !!p.experience;
     save();
@@ -334,7 +379,7 @@ window.RCP = window.RCP || {};
     if(!String(text||'').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Give the log a date and an update.');
     if((fileIds||[]).some(id=>!p.files.some(f=>f.id===id)))throw new Error('Attach files from this project.');
     if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
-    p.logs.push({ id: uid('l'), phaseId, date, by, at: nowIso(), text: text.trim(), files: fileIds || [], comments: [] });
+    p.logs.push({ id: uid('l'), status:'submitted', phaseId, date, by, at: nowIso(), text: text.trim(), files: fileIds || [], comments: [] });
     p.logs.sort((a, b) => a.date.localeCompare(b.date) || a.at.localeCompare(b.at));
     p.checklist.logs = true;
     if (p.mentorId) S.mail(S.mentors(p), `New progress log: ${p.title}`, `${S.displayName(by)} posted an update dated ${date}.`, { label: 'Read log', href: `#/project/${p.id}` });
@@ -343,9 +388,10 @@ window.RCP = window.RCP || {};
 
   S.editLog = function(projectId,logId,by,date,text,phaseId=null) {
     const p=S.project(projectId),log=p?.logs.find(l=>l.id===logId);
-    if(!S.canCollaborate(p) || by!==S.me().id || !log)throw new Error('Project collaboration access required.');
+    if(!S.canEditLog(p,log) || by!==S.me().id)throw new Error('Project collaboration access required.');
     if(!String(text||'').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Give the log a date and an update.');
     if(phaseId && !p.phases?.some(x=>x.id===phaseId))throw new Error('Choose a phase of this project.');
+    if(S.me().roles.includes('student') && date!==S.hkDay())throw new Error('Students can only edit their own logs from today within five hours of posting.');
     (log.edits ||= []).push({by,at:nowIso(),previous:{date:log.date,text:log.text,phaseId:log.phaseId||null}});
     Object.assign(log,{date,text:String(text).trim(),phaseId,editedBy:by,editedAt:nowIso()});
     p.logs.sort((a,b)=>a.date.localeCompare(b.date)||a.at.localeCompare(b.at));
@@ -384,7 +430,7 @@ window.RCP = window.RCP || {};
   S.recordResult = function (id, by, result) {
     const p = S.project(id);
     p.result = result.trim();
-    p.status = 'completed';
+    p.status = 'completed';p.completedAt=nowIso();
     p.checklist.result = true;
     S.log(by, `recorded the result for “${p.title}”: ${p.result}`, p.id);
   };
@@ -490,13 +536,14 @@ window.RCP = window.RCP || {};
     const p = {
       id: uid('p'), stage: d.competitionId ? 2 : 1, origin: 'teacher', title: d.title.trim(),
       partner: d.competitionId ? null : (d.partner.trim() || null), competitionId: d.competitionId || null,
-      abstract: d.abstract.trim(), members: d.members, teacherId: by, mentorId: null, industryTutor: null,
+      abstract: d.abstract.trim(), members: [], membershipLocked:true, teacherId: by, mentorId: null, industryTutor: null,
       experience: d.experience.trim(), status: 'review', createdAt: nowIso(),
       endorsement: { by, at: nowIso(), note: 'Teacher-initiated project.' }, decision: null,
       checklist: Object.fromEntries(RCP.ACCOUNTABILITY.map(([k]) => [k, ['proposal', 'endorsement', 'experience'].includes(k)])),
       logs: [], files: [],
     };
     db.projects.unshift(p);
+    for(const id of d.members)S.inviteStudent(p.id,id);
     if (d.mentorId) S.assignMentor(p.id, d.mentorId, by, true);
     S.mail('committee', `Ratify teacher-initiated project: ${p.title}`, `Initiated by ${S.displayName(by)}. Team: ${p.members.map(S.displayName).join(', ')}.`, { label: 'Open review', href: `#/review/${p.id}` });
     S.log(by, `initiated project “${p.title}” and sent it to the committee to ratify`, p.id);
@@ -553,7 +600,7 @@ window.RCP = window.RCP || {};
     S.isRemote=()=>true;S.session=()=>remoteSession;S.me=()=>remoteSession?S.user(remoteSession.userId):null;S.role=()=>remoteSession?.role || null;S.storesFilesDurably=()=>true;
     S.login=async(username,password)=>{const result=await request('login',{username,password});applyRemote(result);return S.me();};
     S.signOut=async()=>{await request('logout',{});remoteSession=null;db=RCP.seed();};
-    const methods=['skipPasswordChange','setProjectLinks','changePassword','signIn','manageAccount','resetPassword','setProjectMembers','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','editLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
+    const methods=['skipPasswordChange','setProjectLinks','changePassword','signIn','manageAccount','resetPassword','setProjectMembers','inviteStudent','respondInvite','setProjectAchievements','shareFile','setPlaces','saveDraft','submit','endorse','decide','assignMentor','addLog','editLog','comment','submitFinal','recordResult','recommendIndustry','addDeadline','removeDeadline','apply','shortlist','confirmEligibility','post','teacherProject','markRead','setCalendarCheck'];
     for(const method of methods) S[method]=async(...args)=>{const result=await request('action',{method,args});applyRemote(result);return result.result?.id ? (S.project(result.result.id)||S.posting(result.result.id)||S.user(result.result.id)||result.result) : result.result;};
     for(const method of ['addFile','addPostingFile']) S[method]=async(...args)=>{const f=args[1],bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));args[1]={name:f.name,type:f.type,content:btoa(binary)};const result=await request('action',{method,args});applyRemote(result);return result.result;};
     S.getFile=async id=>{const response=await fetch('/api/files/'+encodeURIComponent(id),{credentials:'same-origin'});if(!response.ok)throw new Error('File unavailable for your account.');const f=db.projects.flatMap(p=>p.files).find(f=>f.id===id);return new Blob([await response.arrayBuffer()],{type:f?.type || 'application/octet-stream'});};

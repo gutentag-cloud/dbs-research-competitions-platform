@@ -89,3 +89,11 @@ Isaac and Fergus Tam are assigned to the Disney project and all four phases. Fer
 ## Disney test report in the progress log
 
 The supplied `Railway_Intrusion_Detector_Test_Report_4Aug.docx` is attached to the Disney Phase 1 progress-log entry dated 13 October (the upload date, not the visit date). The original is stored only in private storage and requires authenticated project access. GitHub Pages shows a reference after prototype login and cannot download the original. The public download and current published copy have been removed; earlier Git commits or downloaded copies may still contain the previously published file.
+
+## Project invitations, logs and overviews
+
+Team formation uses invitations in the platform's Mail and Workspaces views. Accepting adds the invited student; declining leaves project access unchanged. Invitations use existing active student accounts and do not send external email. Existing confirmed teams are retained.
+
+Students see submitted progress logs only. They may edit their own logs while both the posting date and log date are today in Hong Kong, for up to five hours after posting. The backend enforces the time limit; mentors and authorized project partners retain collaborative log editing. Partners do not see the eight-step accountability checklist.
+
+Workspaces can be filtered to current/past projects and sorted by creation date, name or latest activity. Past projects remain accessible to their assigned participants. Project overviews include recorded achievements, results, endorsements and progress, with an authenticated downloadable text summary. No past projects or outcomes are invented.
