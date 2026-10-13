@@ -590,18 +590,21 @@ RCP.applyCalendarProposal = function(db) {
   RCP.seed=()=>RCP.enableDisneyCollaboration(seed());
 })();
 
-// This report was explicitly approved for public publication.
-RCP.PUBLIC_DISNEY_REPORT={id:'disney-report-4aug-6702b0bd6c2a248f502a28fd',name:'Railway_Intrusion_Detector_Test_Report_4Aug.docx',url:'https://gutentag-cloud.github.io/dbs-research-competitions-platform/assets/reports/Railway_Intrusion_Detector_Test_Report_4Aug.docx'};
+// The original report is available only from the authenticated private backend.
+RCP.DISNEY_TEST_REPORT={id:'disney-report-4aug-6702b0bd6c2a248f502a28fd',name:'Railway_Intrusion_Detector_Test_Report_4Aug.docx'};
 (() => {
   const seed=RCP.seed;
-  RCP.publishDisneyReport = db => {
-    if(db.disneyPublicReportRevision===1)return db;
-    const p=db.projects.find(p=>p.id==='p-disney'),report=RCP.PUBLIC_DISNEY_REPORT;
+  RCP.attachDisneyReport = db => {
+    if(db.disneyReportLogRevision===1)return db;
+    const p=db.projects.find(p=>p.id==='p-disney'),report=RCP.DISNEY_TEST_REPORT;
     if(!p)return db;
     let f=p.files.find(f=>f.id===report.id);
     if(!f){f={id:report.id,name:report.name,phaseId:'p-disney',category:'Progress log',type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',size:910372,by:'pilot-admin',at:'2026-10-13T00:00:00.000Z',partnerIds:[]};p.files.push(f);}
-    f.publicUrl=report.url;f.publicSource=true;
-    db.disneyPublicReportRevision=1;return db;
+    delete f.publicUrl;delete f.publicSource;f.privateOnly=true;
+    const logId='disney-site-visit-report-4aug';
+    if(!p.logs.some(l=>l.id===logId))p.logs.push({id:logId,phaseId:'p-disney',date:'2026-10-13',by:f.by,at:f.at,text:'Added the railway intrusion detector test report for the 4 August site visit. See the attached document.',files:[report.id],comments:[]});
+    p.checklist.logs=true;p.logs.sort((a,b)=>a.date.localeCompare(b.date)||a.at.localeCompare(b.at));
+    db.disneyReportLogRevision=1;return db;
   };
-  RCP.seed=()=>RCP.publishDisneyReport(seed());
+  RCP.seed=()=>RCP.attachDisneyReport(seed());
 })();

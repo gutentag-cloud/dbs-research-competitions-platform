@@ -86,6 +86,6 @@ The pilot Disney account uses username `Disney` and default password `Disney`. I
 
 Isaac and Fergus Tam are assigned to the Disney project and all four phases. Fergus Tam has a mentor account with default username and password `Fergus Tam`. No teacher endorsement, committee decision or completed result is inferred from that confirmation.
 
-## Public Disney test report
+## Disney test report in the progress log
 
-The supplied `Railway_Intrusion_Detector_Test_Report_4Aug.docx` was explicitly approved for public publication. Its unchanged DOCX is served from `docs/assets/reports/` on GitHub Pages, linked from the sign-in page and Disney Phase 1 files, and can be downloaded without an account. All other original documents remain outside the public repository.
+The supplied `Railway_Intrusion_Detector_Test_Report_4Aug.docx` is attached to the Disney Phase 1 progress-log entry dated 13 October (the upload date, not the visit date). The original is stored only in private storage and requires authenticated project access. GitHub Pages shows a reference after prototype login and cannot download the original. The public download and current published copy have been removed; earlier Git commits or downloaded copies may still contain the previously published file.

@@ -22,7 +22,7 @@ window.RCP = window.RCP || {};
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed && parsed.version === RCP.SEED_VERSION) {
         if (!parsed.pilotRevision && !safe.getItem('rcp-db-before-pilot-accounts')) safe.setItem('rcp-db-before-pilot-accounts',raw);
-        return RCP.publishDisneyReport(RCP.enableDisneyCollaboration(RCP.mergeDisneyPhases(RCP.assignDisneyMentors(RCP.addDisneyPartner(RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)))))))))));
+        return RCP.attachDisneyReport(RCP.enableDisneyCollaboration(RCP.mergeDisneyPhases(RCP.assignDisneyMentors(RCP.addDisneyPartner(RCP.markDisneyUnderway(RCP.addWorkspaceLinks(RCP.addDisneyWorkspaces(RCP.cleanPilot(RCP.applyCalendarProposal(RCP.addExamples(parsed)))))))))));
       }
     } catch (e) { /* fall through to seed */ }
     return RCP.applyCalendarProposal(RCP.seed());
@@ -505,8 +505,7 @@ window.RCP = window.RCP || {};
   };
   S.getFile = async function (id) {
     if (!S.canReadFile(id)) throw new Error("This document is not shared with your account.");
-    const published=db.projects.flatMap(p=>p.files).find(f=>f.id===id&&f.publicUrl);
-    if(published){const response=await fetch(published.publicUrl);if(!response.ok)throw new Error('Public report unavailable.');return new Blob([await response.arrayBuffer()],{type:published.type});}
+    if(db.projects.flatMap(p=>p.files).some(f=>f.id===id&&f.privateOnly))throw new Error('Sign in to the private workspace to download this report. GitHub Pages cannot serve private documents.');
     const sample = [...db.projects.flatMap(p => p.files), ...db.postings.flatMap(o => o.files || [])].find(f => f.id === id && f.sampleContent !== undefined);
     if (sample) return new Blob([sample.sampleContent], { type: sample.type });
     await idbReady;

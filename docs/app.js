@@ -27,7 +27,7 @@
   const people = (ids) => html`<span class="people">${ids.map((id) => html`<span class="person">${avatar(id)}<span>${S.displayName(id)}</span></span>`)}</span>`;
   const trackLabel = (p) => (p.stage === 1 ? `Stage 1 · ${p.partner || (p.origin === 'teacher' ? 'School-based project' : 'Industry project')}` : `Stage 2 · ${p.competitionId ? S.comp(p.competitionId).short : ''}`);
   const expFiles = (p) => p.files.filter((f) => f.category === 'Experience evidence');
-  const fileChips = (files) => files.length ? html`<div class="files-inline">${files.map((f) => html`${f.publicUrl ? html`<a class="file-chip" href="${f.publicUrl}" download="${f.name}">${f.name} · Public</a>` : html`<button type="button" class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button>`}`)}</div>` : '';
+  const fileChips = (files) => files.length ? html`<div class="files-inline">${files.map((f) => html`<button type="button" class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button>`)}</div>` : '';
   const AUDIENCES = [['all', 'All students'], ['G9–G10', 'G9–G10 only'], ['G11–G12', 'G11–G12 only']];
   const audienceLabel = (a) => (AUDIENCES.find(([k]) => k === a) || AUDIENCES[0])[1];
   const gradeOf = (u) => { const m = String((u && u.form) || '').match(/\d+/); return m ? Number(m[0]) : 0; };
@@ -82,8 +82,8 @@
       <img src="assets/crest.png" alt="Diocesan Boys' School crest">
       <h1>Research &amp; Competitions Platform</h1>
       <p>Research projects and competition entries at Diocesan Boys’ School.</p>
-      <p class="poc-note">${S.isRemote() ? 'Private project workspace. Sign in with your assigned account.' : 'Public browser prototype. The published Disney test report is available below; other original files remain private.'}</p>
-      <div class="login-note"><p>School research and development.</p><p><a href="${RCP.PUBLIC_DISNEY_REPORT.url}" download="${RCP.PUBLIC_DISNEY_REPORT.name}">Download Disney test report</a></p><small>2026–27 school year</small></div>
+      <p class="poc-note">${S.isRemote() ? 'Private project workspace. Sign in with your assigned account.' : 'Sign in to open your project workspace. Original documents require the private backend.'}</p>
+      <div class="login-note"><p>School research and development.</p><small>2026–27 school year</small></div>
     </div><div class="login-pick"><h2>Sign in</h2><p class="muted">Use your assigned account. Roles are managed by the committee.</p>
       ${flash ? html`<div class="flash tone-${flash.tone}" role="alert">${flash.msg}</div>` : ''}
       <form data-form="login"><label class="field"><span>Username</span><input name="username" autocomplete="username" required></label>
@@ -477,8 +477,8 @@
           </div>
 
           <div class="panel">
-            <h3>Files</h3>${S.isRemote() ? html`<p class="small muted">Private server storage. Downloads require your assigned project account.</p>` : html`<p class="small muted">The report marked Public is downloadable by anyone. Other original files remain in the private workspace.</p>`}
-            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li>${f.publicUrl ? html`<a class="file-chip" href="${f.publicUrl}" download="${f.name}">${f.name} · Public</a>` : html`<button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button>`}<span class="muted small">${f.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===f.phaseId)?.number || '—') + ' · ' : ''}${f.trial ? 'Trial · synthetic · ' : ''}${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
+            <h3>Files</h3>${S.isRemote() ? html`<p class="small muted">Private server storage. Downloads require your assigned project account.</p>` : html`<p class="small muted">Report attachments require sign-in to the private workspace. This GitHub Pages preview shows their references only.</p>`}
+            ${p.files.length ? html`<ul class="files">${p.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${f.phaseId && p.phases ? 'Phase ' + (p.phases.find(x=>x.id===f.phaseId)?.number || '—') + ' · ' : ''}${f.trial ? 'Trial · synthetic · ' : ''}${f.category} · ${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span>${role === 'committee' ? sharingControls(p,f) : ''}</li>`)}</ul>` : html`<p class="muted small">Proposals, logs and presentations uploaded here are kept with the project.</p>`}
             ${canWrite ? html`
               <form data-form="upload" class="upload">${phaseField(p)}
                 <select name="category" aria-label="File type">${RCP.FILE_CATEGORIES.map((c) => html`<option>${c}</option>`)}</select>
@@ -628,7 +628,7 @@
       <div class="grid-2">
         <section class="panel">
           <p class="pre">${o.description}</p>
-          ${(o.files || []).length ? html`<h4>Attached files</h4><ul class="files">${o.files.map((f) => html`<li>${f.publicUrl ? html`<a class="file-chip" href="${f.publicUrl}" download="${f.name}">${f.name} · Public</a>` : html`<button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button>`}<span class="muted small">${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span></li>`)}</ul>` : ''}
+          ${(o.files || []).length ? html`<h4>Attached files</h4><ul class="files">${o.files.map((f) => html`<li><button class="file-chip" data-act="download" data-file="${f.id}">${f.name}</button><span class="muted small">${size(f.size)} · ${S.user(f.by) ? S.user(f.by).name : ''}</span></li>`)}</ul>` : ''}
           <dl class="kv"><dt>Places</dt><dd>${o.places}</dd><dt>Open to</dt><dd>${audienceLabel(o.audience)}</dd><dt>Time needed</dt><dd>${o.hours} for ${o.duration}</dd><dt>Looking for</dt><dd>${o.requirements}</dd><dt>Check-ins</dt><dd>Every 2 months, on the platform</dd></dl>
         </section>
         <aside class="side">
