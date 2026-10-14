@@ -62,14 +62,14 @@ window.RCP = window.RCP || {};
     } catch (e) { return null; }
   };
   const setSession = (u, role) => safe.setItem(SESSION, JSON.stringify({userId:u.id,role,authRevision:u.authRevision}));
-  const passwordHash = async (password, salt) => {
+  const passwordHash = async (password, salt, iterations=120000) => {
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(salt),iterations:120000,hash:'SHA-256'},key,256);
+    const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(salt),iterations,hash:'SHA-256'},key,256);
     return Array.from(new Uint8Array(bits), x => x.toString(16).padStart(2,'0')).join('');
   };
   S.login = async (username, password) => {
     const u = db.users.find(u => (u.username || u.name).toLowerCase() === username.trim().toLowerCase() && u.active !== false);
-    if (!u || (u.passwordHash ? await passwordHash(password,u.passwordSalt) !== u.passwordHash : password !== u.username)) throw new Error('Incorrect username or password.');
+    if (!u || (u.passwordHash ? await passwordHash(password,u.passwordSalt,u.passwordIterations||120000) !== u.passwordHash : password !== u.username)) throw new Error('Incorrect username or password.');
     setSession(u,u.roles.includes('student') ? 'student' : u.roles.includes('committee') ? 'committee' : u.roles[0]);
     return u;
   };
@@ -101,11 +101,12 @@ window.RCP = window.RCP || {};
   S.changePassword = async (oldPassword, password) => {
     const u = S.me();
     if (!u) throw new Error('Please sign in.');
-    const valid = u.passwordHash ? await passwordHash(oldPassword,u.passwordSalt) === u.passwordHash : oldPassword === u.username;
+    const valid = u.passwordHash ? await passwordHash(oldPassword,u.passwordSalt,u.passwordIterations||120000) === u.passwordHash : oldPassword === u.username;
     if (!valid) throw new Error('Current password is incorrect.');
     if (password.length < 12 || password === u.username) throw new Error('Choose a new password of at least 12 characters, different from your username.');
     u.passwordSalt = Array.from(crypto.getRandomValues(new Uint8Array(16)),x => x.toString(16).padStart(2,'0')).join('');
-    const role = S.role(); u.passwordHash = await passwordHash(password,u.passwordSalt); u.mustChangePassword = false; u.authRevision++;
+    u.passwordIterations=RCP.PASSWORD_ITERATIONS||120000;
+    const role = S.role(); u.passwordHash = await passwordHash(password,u.passwordSalt,u.passwordIterations||120000); u.mustChangePassword = false; u.authRevision++;
     setSession(u,role); save();
   };
   const committeeOnly = () => { if (S.role() !== 'committee' || S.me().roles.includes('student') || S.me().mustChangePassword) throw new Error('Committee access required.'); };
@@ -129,7 +130,7 @@ window.RCP = window.RCP || {};
   S.resetPassword = id => {
     committeeOnly(); const u = S.user(id);
     if (!u || u.id === S.me().id) throw new Error('Use My account to change your password.');
-    delete u.passwordHash; delete u.passwordSalt; u.mustChangePassword=true;u.authRevision++;
+    delete u.passwordHash; delete u.passwordSalt; delete u.passwordIterations; u.mustChangePassword=true;u.authRevision++;
     for (const p of db.projects) for (const f of p.files) f.partnerIds = (f.partnerIds || []).filter(id => id !== u.id);
     S.log(S.me().id,'reset the default password for '+u.username);save();
   };

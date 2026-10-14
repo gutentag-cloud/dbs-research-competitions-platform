@@ -1,3 +1,5 @@
+Live backend workspace: [DBS Research & Competitions](https://dbs-research-project-workspace.cosmictern2.chatgpt.site/). GitHub Pages now redirects there. Existing pilot accounts and all ten original Disney documents have been migrated to persistent hosted storage.
+
 # DBS Research & Competitions Platform
 
 The original school-branded UI remains. There are now two modes:
